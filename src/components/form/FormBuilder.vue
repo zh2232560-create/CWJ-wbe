@@ -60,7 +60,6 @@
           style="width: 100%"
           :disabled="isVisitor"
           format="HH:mm"
-          value-format="HH:mm"
           :disabled-hours="disabledHours"
           clearable
         ></el-time-picker>
@@ -148,12 +147,12 @@
           @click="handleConfirmAndGenerate"
           style="width: 200px; margin-left: 20px"
         >
-          确认并生成模板
+          确认并生成手册
         </el-button>
 
         <!-- 接待员专属按钮 -->
         <!-- <el-button
-          v-if="isReceptionist && !isCreatePage"
+          v-if="isReceptionist && !isCreatePage" 
           type="warning"
           size="large"
           round
@@ -172,6 +171,7 @@ import { reactive, computed, ref, watch } from 'vue'
 import { Delete, Plus } from '@element-plus/icons-vue'
 import MeetingAPI from '@/api/meeting' // 引入获取会议地点的API
 import { onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 const props = defineProps({
   user: {
     type: Object,
@@ -275,17 +275,13 @@ const handleConfirmAndGenerate = () => {
 const handleConfirmInfo = () => {
   emit('confirm-info', form)
 }
-
 // 合并日期和时间
 const combineDateTime = (date: string, time: string) => {
   if (!date || !time) return ''
   const dateObj = new Date(date)
   const timeObj = new Date(time)
-  console.log(11, dateObj)
-  console.log(22, timeObj)
   dateObj.setHours(timeObj.getHours())
   dateObj.setMinutes(timeObj.getMinutes())
-  console.log(dateObj)
   return dateObj.toISOString()
 }
 // 获取会议地点数据的方法
@@ -293,8 +289,6 @@ const fetchMeetingLocations = () => {
   locationsLoading.value = true
   try {
     const res = MeetingAPI.getPlaceList().then((res) => {
-      console.log(res)
-      console.log(res.data.data)
       if (res.status === 200) {
         // 将接口数据转换为el-select需要的格式
         meetingLocations.value = res.data.data.map((item) => ({

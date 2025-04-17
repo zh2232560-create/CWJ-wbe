@@ -1,66 +1,85 @@
 <template>
-  <div class="meeting-container">
-    <!-- 顶部标题和创建按钮 -->
-    <div class="header">
-      <h2>会议记录</h2>
-      <el-button type="primary" @click="handleCreate">创建新会议</el-button>
-    </div>
+  <div v-if="!isLoggedIn" class="login-container">
+    <h2>登录</h2>
+    <el-form
+      :model="loginForm"
+      :rules="rules"
+      ref="loginFormRef"
+      @submit.native.prevent="handleLogin"
+    >
+      <el-form-item label="账号" prop="username">
+        <el-input v-model="loginForm.username" placeholder="请输入账号"></el-input>
+      </el-form-item>
+      <el-form-item label="密码" prop="password">
+        <el-input type="password" v-model="loginForm.password" placeholder="请输入密码"></el-input>
+      </el-form-item>
+      <el-button type="primary" native-type="submit">登录</el-button>
+    </el-form>
+  </div>
+  <div v-else>
+    <div class="meeting-container">
+      <!-- 顶部标题和创建按钮 -->
+      <div class="header">
+        <h2>会议记录</h2>
+        <el-button type="primary" @click="handleCreate">创建新会议</el-button>
+      </div>
 
-    <!-- 会议列表 -->
-    <div class="meeting-list">
-      <div
-        v-for="(item, index) in meetingList"
-        :key="item.id"
-        class="meeting-item-wrapper"
-        @touchstart="handleTouchStart(index, $event)"
-        @touchmove="handleTouchMove(index, $event)"
-        @touchend="handleTouchEnd(index)"
-      >
-        <div class="meeting-item" :style="{ transform: `translateX(${item.offsetX}px)` }">
-          <div class="meeting-content">
-            <div class="meeting-image">
-              <img src="@/assets/static/meet.png" alt="会议图片" fit="cover" />
-            </div>
-            <div class="meeting-info">
-              <h3>{{ item.title || '未命名会议' }}</h3>
-              <el-tag :type="getStatusTagType(item.status)" size="small" effect="light">
-                {{ getStatusText(item.status) }}
-              </el-tag>
-              <div class="meta-info">
-                <span
-                  ><el-icon><Clock style="color: aqua" /></el-icon> 会议时间:
-                  {{ formatTime(item.meeting_time) }}</span
-                >
-                <span
-                  ><el-icon><Location style="color: blue" /></el-icon> 会议地点:
-                  {{ item.location.name }}</span
-                >
+      <!-- 会议列表 -->
+      <div class="meeting-list">
+        <div
+          v-for="(item, index) in meetingList"
+          :key="item.id"
+          class="meeting-item-wrapper"
+          @touchstart="handleTouchStart(index, $event)"
+          @touchmove="handleTouchMove(index, $event)"
+          @touchend="handleTouchEnd(index)"
+        >
+          <div class="meeting-item" :style="{ transform: `translateX(${item.offsetX}px)` }">
+            <div class="meeting-content">
+              <div class="meeting-image">
+                <img src="@/assets/static/meet.png" alt="会议图片" fit="cover" />
+              </div>
+              <div class="meeting-info">
+                <h3>{{ item.title || '未命名会议' }}</h3>
+                <el-tag :type="getStatusTagType(item.status)" size="small" effect="light">
+                  {{ getStatusText(item.status) }}
+                </el-tag>
+                <div class="meta-info">
+                  <span
+                    ><el-icon><Clock style="color: aqua" /></el-icon> 会议时间:
+                    {{ formatTime(item.meeting_time) }}</span
+                  >
+                  <span
+                    ><el-icon><Location style="color: blue" /></el-icon> 会议地点:
+                    {{ item.location.name }}</span
+                  >
+                </div>
               </div>
             </div>
-          </div>
-          <div class="meeting-actions">
-            <el-button size="small" @click.stop="handleEdit(item)" class="edit-btn">
-              编辑
-            </el-button>
-            <el-button
-              size="small"
-              type="danger"
-              @click.stop="handleDelete(item.id, index)"
-              class="delete-btn"
-            >
-              删除
-            </el-button>
+            <div class="meeting-actions">
+              <el-button size="small" @click.stop="handleEdit(item)" class="edit-btn">
+                编辑
+              </el-button>
+              <el-button
+                size="small"
+                type="danger"
+                @click.stop="handleDelete(item.id, index)"
+                class="delete-btn"
+              >
+                删除
+              </el-button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- 加载更多 -->
-    <div v-if="loading" class="loading-more">
-      <el-icon class="is-loading"><Loading /></el-icon>
-      加载中...
+      <!-- 加载更多 -->
+      <div v-if="loading" class="loading-more">
+        <el-icon class="is-loading"><Loading /></el-icon>
+        加载中...
+      </div>
+      <div v-if="noMore" class="no-more">没有更多数据了</div>
     </div>
-    <div v-if="noMore" class="no-more">没有更多数据了</div>
   </div>
 </template>
 
@@ -79,7 +98,27 @@ const limit = ref(10)
 const router = useRouter()
 const touchStartX = ref(0)
 const currentSlide = ref(null)
+// 数据
+const isLoggedIn = ref(false)
+const loginForm = ref({
+  username: '',
+  password: '',
+})
+const rules = {
+  username: [{ required: true, message: '请输入账号', trigger: 'blur' }],
+  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+}
+const loginFormRef = ref(null)
 
+// 模拟用户数据
+const mockUser = {
+  username: 'admin',
+  password: '123456',
+}
+
+// Token 处理
+const TOKEN_KEY = 'auth_token'
+const TOKEN_EXPIRATION = 3 * 24 * 60 * 60 * 1000 // 三天
 // 初始化数据时添加滑动相关属性
 const initMeetingList = (data) => {
   return data.map((item) => ({
@@ -101,8 +140,8 @@ const getStatusTagType = (status) => {
 // 获取状态显示文本
 const getStatusText = (status) => {
   const textMap = {
-    draft: '待生成模板',
-    confirmed: '已生成模板',
+    draft: '待生成手册',
+    confirmed: '已生成手册',
     completed: '会议已结束',
   }
   return textMap[status] || status
@@ -225,10 +264,53 @@ const handleScroll = () => {
   }
 }
 
+// 检查 Token 是否有效
+const checkTokenValidity = () => {
+  const token = localStorage.getItem(TOKEN_KEY)
+  if (token) {
+    const { expiration } = JSON.parse(token)
+    if (Date.now() < expiration) {
+      return true
+    }
+  }
+  return false
+}
+
+// 登录逻辑
+const handleLogin = async () => {
+  try {
+    await loginFormRef.value.validate()
+
+    // 模拟登录验证
+    if (
+      loginForm.value.username === mockUser.username &&
+      loginForm.value.password === mockUser.password
+    ) {
+      // 生成 Token 并保存
+      const tokenData = {
+        value: 'your-generated-token',
+        expiration: Date.now() + TOKEN_EXPIRATION,
+      }
+      localStorage.setItem(TOKEN_KEY, JSON.stringify(tokenData))
+      isLoggedIn.value = true
+      ElMessage.success('登录成功')
+    } else {
+      ElMessage.error('账号或密码错误')
+    }
+  } catch (error) {
+    ElMessage.error('请填写完整信息')
+  }
+}
+
 // 生命周期钩子
 onMounted(() => {
   getMeetingList()
   window.addEventListener('scroll', handleScroll)
+  if (checkTokenValidity()) {
+    isLoggedIn.value = true
+  } else {
+    isLoggedIn.value = false
+  }
 })
 
 onBeforeUnmount(() => {
@@ -330,7 +412,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   padding: 0 15px;
-  background: #bbffd5;
+  background: #bbdcff;
 
   .edit-btn {
     margin-right: 10px;

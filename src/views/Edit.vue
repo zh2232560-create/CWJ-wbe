@@ -103,33 +103,31 @@ const handleSubmit = (submitData) => {
 }
 const handleGenerateDoc = async (submitData) => {
   try {
-    const meetingId = url_id.value
-    submitData.id = url_id.value
-    MeetAPI.update(submitData).then((res) => {
-      console.log('update', res)
-      if (res.status === 200) {
-        ElMessage.success('修改成功')
-      } else {
-        ElMessage.error('修改失败')
-      }
-    })
     if (!submitData) {
-      ElMessage.warning('请先保存会议信息')
+      ElMessage.warning('暂无会议信息')
       return
     }
-    ElMessage.info('正在生成文档，请稍候...')
-
-    const res = MeetAPI.downloadWord(meetingId).then(async (res) => {
-      console.log('downloadWord', res)
-      if (res.status === 200 && res.data.word_url) {
+    const meetingId = url_id.value
+    submitData.id = url_id.value
+    ElMessage.info('正在提交数据，请稍候...')
+    // 等待数据更新完成
+    const updateRes = await MeetAPI.update(submitData)
+    console.log('update', updateRes)
+    if (updateRes.status === 200) {
+      ElMessage.success('修改成功')
+      ElMessage.info('正在生成文档，请稍候...')
+      // 等待文档下载信息获取完成
+      const downloadRes = await MeetAPI.downloadWord(meetingId)
+      console.log('downloadWord', downloadRes)
+      if (downloadRes.status === 200 && downloadRes.data.word_url) {
         const data = {
           id: meetingId,
-          word_url: res.data.word_url,
+          word_url: downloadRes.data.word_url.url,
           status: 'confirmed',
         }
-        const url = await MeetAPI.updateeword_url(meetingId)
-        ElMessage.success('url生成成功')
-        const baseurl = import.meta.env.VITE_API_BASE_URL + '/' + res.data.word_url.url
+        // 等待更新 word_url 信息完成
+        const url = await MeetAPI.updateeword_url(data)
+        const baseurl = import.meta.env.VITE_API_BASE_URL + '/' + downloadRes.data.word_url.url
         console.log('baseurl', baseurl)
         // 方法1：直接打开新窗口下载
         window.open(baseurl, '_blank')
@@ -137,7 +135,9 @@ const handleGenerateDoc = async (submitData) => {
       } else {
         ElMessage.error('文档生成失败')
       }
-    })
+    } else {
+      ElMessage.error('修改失败')
+    }
   } catch (error) {
     console.error('生成文档出错:', error)
     ElMessage.error('文档生成出错')
@@ -162,6 +162,7 @@ const getMeetDetail = async (meeting_id) => {
         meetingDate: meetingTime,
         meetingTime: meetingTime,
       }
+      console.log('meetingData.value', meetingData.value)
     }
   } catch (error) {
     console.error('获取会议详情失败:', error)

@@ -40,6 +40,12 @@ const routes = [
     component: () => import('@/views/Meeting_url.vue'),
     props: true,
   },
+  {
+    path: '/user/create',
+    name: 'usercreate',
+    component: () => import('@/views/Meeting_create.vue'),
+    props: true,
+  },
   // {
   //   path: '/meetings/:id',
   //   name: 'MeetingDetail',

@@ -54,4 +54,8 @@ export default {
   updateeword_url(data) {
     return request.put('/meeting/updateMeetingsWordUrl', data)
   },
+
+  deleteMeeting(id){
+    return request.delete(`/meeting/deleteMeeting/${id}`)
+  }
 }
