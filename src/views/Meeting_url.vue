@@ -112,7 +112,12 @@ const getMeetingInfo = (meetid) => {
       ElMessage.error('获取会议详情失败')
     })
 }
-
+const openInGoogleViewer = () => {
+  window.open(
+    `https://docs.google.com/viewer?url=https://www.pkahealth.com/uploads/downword/20250417/6800ce4859947.docx`,
+    '_blank',
+  )
+}
 // 访问链接方法
 const visitLink = (link) => {
   window.open(link, '_blank')

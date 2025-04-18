@@ -2,7 +2,7 @@
   <div class="create-container">
     <div class="header">
       <el-icon @click="router.go(-1)"><ArrowLeft /></el-icon>
-      <h2 class="title">创建会晤预约</h2>
+      <h2 class="title">创建会议预约</h2>
     </div>
     <FormBuilder
       :user="currentUser"

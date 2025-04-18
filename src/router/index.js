@@ -1,11 +1,6 @@
 // route/index.js
 import { createRouter, createWebHistory } from 'vue-router'
 const routes = [
-  // {
-  //   path: '/',
-  //   name: 'MeetingList',
-  //   component: () => import('@/views/List.vue'),
-  // },
   {
     path: '/create',
     name: 'MeetingCreate',
@@ -24,16 +19,16 @@ const routes = [
     props: true,
   },
   {
-    path: '/',
+    path: '/admin',
     name: 'Meetinglist',
     component: () => import('@/views/Meeting_records.vue'),
     props: true,
   },
   // 添加 /admin 重定向到 / 的规则
-  {
-    path: '/admin',
-    redirect: '/',
-  },
+  // {
+  //   path: '/admin',
+  //   redirect: '/',
+  // },
   {
     path: '/adminedit',
     name: 'adminedit',
@@ -41,7 +36,7 @@ const routes = [
     props: true,
   },
   {
-    path: '/user/create',
+    path: '/',
     name: 'usercreate',
     component: () => import('@/views/Meeting_create.vue'),
     props: true,
