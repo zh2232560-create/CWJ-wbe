@@ -1,3 +1,4 @@
+<!-- meeting_records.vue -->
 <template>
   <div v-if="!isLoggedIn" class="login-container">
     <h2>登录</h2>
@@ -34,7 +35,11 @@
           @touchmove="handleTouchMove(index, $event)"
           @touchend="handleTouchEnd(index)"
         >
-          <div class="meeting-item" :style="{ transform: `translateX(${item.offsetX}px)` }">
+          <div
+            class="meeting-item"
+            :style="{ transform: `translateX(${item.offsetX}px)` }"
+            @click.stop="handleadminEdit(item)"
+          >
             <div class="meeting-content">
               <div class="meeting-image">
                 <img src="@/assets/static/meet.png" alt="会议图片" fit="cover" />
@@ -57,8 +62,19 @@
               </div>
             </div>
             <div class="meeting-actions">
-              <el-button size="small" @click.stop="handleEdit(item)" class="edit-btn">
-                编辑
+              <el-button size="small" @click.stop="handleEdit(item)" class="edit-btn"
+                >查看链接</el-button
+              >
+              <el-button
+                size="small"
+                @click.stop="createWord(item)"
+                class="down-btn"
+                v-if="item.status === 'draft'"
+              >
+                生成手册
+              </el-button>
+              <el-button size="small" @click.stop="downWord(item.word_url)" class="down-btn" v-else>
+                下载手册
               </el-button>
               <el-button
                 size="small"
@@ -175,6 +191,7 @@ const getMeetingList = async () => {
 
     if (res.data && res.data.length > 0) {
       const newList = initMeetingList(res.data)
+      console.log(newList)
       meetingList.value = [...meetingList.value, ...newList]
       page.value++
     } else {
@@ -214,7 +231,7 @@ const handleTouchMove = (index, e) => {
 const handleTouchEnd = (index) => {
   // 如果滑动超过一定距离，保持打开状态
   if (meetingList.value[index].offsetX < -50) {
-    meetingList.value[index].offsetX = -170 // 操作按钮宽度
+    meetingList.value[index].offsetX = -290 // 操作按钮宽度
   } else {
     meetingList.value[index].offsetX = 0
   }
@@ -230,10 +247,96 @@ const handleEdit = (item) => {
   // 先复位卡片
   item.offsetX = 0
   const itemId = obfuscateId(item.id)
-  console.log(itemId)
   router.push(`/adminedit?id=${itemId}`)
 }
 
+//生成手册
+const createWord = async (item) => {
+  try {
+    // 先复位卡片
+    item.offsetX = 0
+    console.log(item.id)
+    const downloadRes = await MeetAPI.downloadWord(item.id)
+    if (downloadRes.status === 200 && downloadRes.data.word_url) {
+      const data = {
+        id: item.id,
+        word_url: downloadRes.data.word_url.url,
+        status: 'confirmed',
+      }
+      await MeetAPI.updateeword_url(data)
+      item.status = 'confirmed'
+      const generatedDocUrl =
+        import.meta.env.VITE_API_BASE_URL + '/' + downloadRes.data.word_url.url
+      // 自动尝试下载
+      setTimeout(() => {
+        downloadDocument(generatedDocUrl)
+      }, 500)
+      //复制会议手册链接
+      navigator.clipboard.writeText(generatedDocUrl).then(() => {
+        ElNotification.success({
+          title: '文档生成成功',
+          message: '会议手册链接已复制到剪贴板，若未下载请到浏览器访问',
+          duration: 6000,
+        })
+      })
+    } else {
+      ElMessage.error('生成手册失败')
+    }
+  } catch (e) {
+    ElMessage.error('生成手册失败')
+  }
+}
+const downWord = (url) => {
+  try {
+    console.log('下载链接', url)
+    const generatedDocUrl = import.meta.env.VITE_API_BASE_URL + '/' + url
+    console.log('下载链接', generatedDocUrl)
+    // 自动尝试下载
+    setTimeout(() => {
+      downloadDocument(generatedDocUrl)
+    }, 500)
+    //复制会议手册链接
+    navigator.clipboard.writeText(generatedDocUrl).then(() => {
+      ElNotification.success({
+        title: '',
+        message: '会议手册链接已复制到剪贴板，若未下载请到浏览器访问',
+        duration: 6000,
+      })
+    })
+  } catch (e) {
+    ElMessage.error('下载失败')
+  }
+}
+/**
+ * 下载文档
+ * @param {*} generatedDocUrl
+ */
+const downloadDocument = (generatedDocUrl) => {
+  try {
+    // 针对iOS设备的特殊处理
+    if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+      const link = document.createElement('a')
+      link.href = generatedDocUrl
+      link.target = '_blank'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } else {
+      window.open(generatedDocUrl, '_blank')
+    }
+  } catch (error) {
+    ElMessage.warning('自动下载失败，请手动复制链接')
+  }
+}
+/**
+ * 提交修改会议
+ * @param {*} item
+ */
+const handleadminEdit = (item) => {
+  item.offsetX = 0
+  const itemId = obfuscateId(item.id)
+  router.push(`edit/?id=${itemId}&user=admin`)
+}
 // 删除会议
 const handleDelete = async (id, index) => {
   try {
@@ -418,6 +521,13 @@ onBeforeUnmount(() => {
     margin-right: 10px;
     background-color: #409eff;
     border-color: #409eff;
+    color: white;
+  }
+
+  .down-btn {
+    margin-right: 10px;
+    background-color: #2cbf69;
+    border-color: #2cbf69;
     color: white;
   }
 

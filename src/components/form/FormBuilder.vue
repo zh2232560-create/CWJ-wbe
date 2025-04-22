@@ -3,12 +3,12 @@
   <el-form :model="form" label-width="auto" style="max-width: 800px">
     <!-- 会议基本信息 -->
     <el-form-item>
-      <h3>会议主题</h3>
+      <h3><span style="color: red">*</span> 会议主题</h3>
       <el-input v-model="form.title" placeholder="请输入会议主题" :disabled="isVisitor" />
     </el-form-item>
     <!-- 新增会议地点选择 -->
     <el-form-item>
-      <h3>会议地点</h3>
+      <h3><span style="color: red">*</span>会议地点</h3>
       <el-select
         v-model="form.location"
         placeholder="请选择会议地点"
@@ -27,7 +27,7 @@
     </el-form-item>
 
     <el-form-item>
-      <h3>会议议程</h3>
+      <h3><span style="color: red">*</span>会议议程</h3>
       <el-input
         v-model="form.agenda"
         :autosize="{ minRows: 2, maxRows: 7 }"
@@ -37,7 +37,7 @@
       />
     </el-form-item>
 
-    <h4>会议时间</h4>
+    <h4><span style="color: red">*</span>会议时间</h4>
     <!-- 修改日期和时间选择器部分 -->
     <el-form-item>
       <el-col :span="12">

@@ -1,12 +1,10 @@
 <template>
   <div class="create-container">
-    <h2 class="title">会议编辑</h2>
+    <h2 class="title">会议链接</h2>
     <div class="result-box">
-      <el-alert title="会议已创建成功" type="success" show-icon>
-        <p>请将以下链接发送给相关人员：</p>
-
+      <el-alert title="会议已创建" type="success">
         <div class="link-group">
-          <h4>管理员编辑链接：</h4>
+          <h4>管理员可使用以下链接编辑或生成会议手册：</h4>
           <el-input v-model="adminLink" readonly>
             <template #append>
               <el-button @click="copyLink(adminLink)">复制</el-button>
@@ -16,7 +14,9 @@
         </div>
 
         <div class="link-group">
-          <h4>接待员编辑链接：</h4>
+          <p>
+            如需要对<span style="color: red">会议信息进一步修改</span>，可以点击或者转发以下链接
+          </p>
           <el-input v-model="receptionistLink" readonly>
             <template #append>
               <el-button @click="copyLink(receptionistLink)">复制</el-button>
@@ -25,7 +25,7 @@
           </el-input>
         </div>
 
-        <div class="link-group">
+        <!-- <div class="link-group">
           <h4>访客编辑链接：</h4>
           <el-input v-model="visitorLink" readonly>
             <template #append>
@@ -33,11 +33,15 @@
               <el-button type="primary" @click="visitLink(visitorLink)">访问</el-button>
             </template>
           </el-input>
-        </div>
+        </div> -->
 
         <!-- 新增Word文档链接区域 -->
         <div class="link-group" v-if="showWordLink">
-          <h4>会议文档：</h4>
+          <p>
+            <span style="color: red">会议手册</span
+            >已创建，请通过以下链接直接下载或复制到浏览器下载<span style="color: red">最新</span
+            >手册
+          </p>
           <el-input v-model="wordLink" readonly>
             <template #append>
               <el-button @click="copyLink(wordLink)">复制</el-button>

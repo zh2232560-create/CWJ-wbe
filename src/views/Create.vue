@@ -2,7 +2,7 @@
   <div class="create-container">
     <div class="header">
       <el-icon @click="router.go(-1)"><ArrowLeft /></el-icon>
-      <h2 class="title">创建会议预约</h2>
+      <h2 class="title">{{ showResult ? '创建会议成功' : '创建会议预约' }}</h2>
     </div>
     <FormBuilder
       :user="currentUser"
@@ -11,21 +11,10 @@
       v-if="!showResult"
     />
     <div class="result-box" v-if="showResult">
-      <el-alert title="创建成功" type="success" show-icon>
-        <p>请将以下链接发送给相关人员：</p>
-
+      <el-alert title="" type="success" show-icon>
+        <p style="margin-top: 25px">如需要对会议信息进一步修改，可以点击或者转发以下链接。</p>
         <div class="link-group">
-          <h4>管理员链接：</h4>
-          <el-input v-model="adminLink" readonly>
-            <template #append>
-              <el-button @click="copyLink(adminLink)">复制</el-button>
-              <el-button type="primary" @click="visitLink(adminLink)">访问</el-button>
-            </template>
-          </el-input>
-        </div>
-
-        <div class="link-group">
-          <h4>接待员链接：</h4>
+          <h4>编辑链接：</h4>
           <el-input v-model="receptionistLink" readonly>
             <template #append>
               <el-button @click="copyLink(receptionistLink)">复制</el-button>
@@ -33,8 +22,21 @@
             </template>
           </el-input>
         </div>
-
+        <p>
+          管理员可通过以下链接进入会议管理页面
+          <span style="color: red">（首次进入需登录）</span>
+        </p>
         <div class="link-group">
+          <!-- <h4>管理员链接：</h4> -->
+          <el-input v-model="adminLink" readonly>
+            <template #append>
+              <el-button @click="copyLink(adminLink)">复制</el-button>
+              <el-button type="primary" @click="gopage">访问</el-button>
+            </template>
+          </el-input>
+        </div>
+
+        <!-- <div class="link-group">
           <h4>访客链接：</h4>
           <el-input v-model="visitorLink" readonly>
             <template #append>
@@ -42,7 +44,7 @@
               <el-button type="primary" @click="visitLink(visitorLink)">访问</el-button>
             </template>
           </el-input>
-        </div>
+        </div> -->
       </el-alert>
     </div>
   </div>
@@ -84,6 +86,13 @@ const visitLink = (link) => {
   // 在新标签页打开链接
   window.open(link, '_blank')
 }
+const gopage = () => {
+  // 使用replace方法替换当前历史记录
+  router.replace('/admin').then(() => {
+    // 手动添加首页到历史记录
+    window.history.pushState(null, '', '/')
+  })
+}
 // 处理表单提交
 const handleSubmit = async (submitData) => {
   try {
@@ -99,7 +108,9 @@ const handleSubmit = async (submitData) => {
     const baseUrl = window.location.origin
 
     // 生成三个角色的链接
-    adminLink.value = `${baseUrl}/meeting/edit/?id=${meetingId}&user=admin`
+    adminLink.value = `${baseUrl}/meeting/admin/`
+    //跳转到admin页面
+    // router.push({ path: '/meeting/admin', query: { id: meetingId, user: 'admin' } })
     receptionistLink.value = `${baseUrl}/meeting/edit/?id=${meetingId}&user=receptionist`
     visitorLink.value = `${baseUrl}/meeting/edit/?id=${meetingId}&user=visitor`
 
