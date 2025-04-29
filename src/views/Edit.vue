@@ -112,6 +112,7 @@ const generatedDocUrl = ref('')
 // 1. 清空默认数据
 const meetingData = ref({
   title: '',
+  firstlocation: '数据空间研究院（工投高新智谷B8座）',
   location: '',
   agenda: '',
   meetingDate: null,
@@ -325,6 +326,7 @@ const getMeetDetail = async (meeting_id) => {
 
       meetingData.value = {
         ...formattedData,
+        firstlocation: '数据空间研究院（工投高新智谷B8座）',
         meetingDate: meetingTime,
         meetingTime: meetingTime,
       }

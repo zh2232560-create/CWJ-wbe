@@ -191,7 +191,6 @@ const getMeetingList = async () => {
 
     if (res.data && res.data.length > 0) {
       const newList = initMeetingList(res.data)
-      console.log(newList)
       meetingList.value = [...meetingList.value, ...newList]
       page.value++
     } else {
@@ -275,7 +274,7 @@ const createWord = async (item) => {
       navigator.clipboard.writeText(generatedDocUrl).then(() => {
         ElNotification.success({
           title: '文档生成成功',
-          message: '会议手册链接已复制到剪贴板，若未下载请到浏览器访问',
+          message: '会议手册链接已复制到剪贴板，若未自动下载请到浏览器访问',
           duration: 6000,
         })
       })
