@@ -3,29 +3,53 @@
   <el-form :model="form" label-width="auto" style="max-width: 800px">
     <!-- 会议基本信息 -->
     <el-form-item>
-      <h3><span style="color: red">*</span> 会议主题</h3>
-      <el-input v-model="form.title" placeholder="请输入会议主题" :disabled="isVisitor" />
+      <el-col :span="24">
+        <h3><span style="color: red">*</span> 会议主题</h3>
+      </el-col>
+      <el-col :span="24">
+        <el-input v-model="form.title" placeholder="请输入会议主题" :disabled="isVisitor" />
+      </el-col>
     </el-form-item>
     <!-- 新增会议地点选择 -->
     <el-form-item>
-      <h3><span style="color: red">*</span>会议地点</h3>
-      <el-select
-        v-model="form.location"
-        placeholder="请选择会议地点"
-        style="width: 100%"
-        :disabled="isVisitor"
-        loading-text="加载中..."
-        :loading="locationsLoading"
-      >
-        <el-option
-          v-for="location in meetingLocations"
-          :key="location.value"
-          :label="location.label"
-          :value="location.value"
-        />
-      </el-select>
+      <el-col :span="24">
+        <h3><span style="color: red">*</span>会议地点</h3>
+      </el-col>
+      <el-col :span="11">
+        <el-select
+          v-model="form.firstlocation"
+          placeholder="请选择会议地点"
+          style="width: 100%"
+          :disabled="true"
+          loading-text="加载中..."
+          :loading="locationsLoading"
+        >
+          <el-option
+            v-for="location in meetingLocations"
+            :key="location.value"
+            :label="location.label"
+            :value="location.value"
+          />
+        </el-select> </el-col
+      ><span style="margin: 0 2px">-</span>
+      <el-col :span="12">
+        <el-select
+          v-model="form.location"
+          placeholder="请选择会议地点"
+          style="width: 100%"
+          :disabled="isVisitor"
+          loading-text="加载中..."
+          :loading="locationsLoading"
+        >
+          <el-option
+            v-for="location in meetingLocations"
+            :key="location.value"
+            :label="location.label"
+            :value="location.value"
+          />
+        </el-select>
+      </el-col>
     </el-form-item>
-
     <el-form-item>
       <h3><span style="color: red">*</span>会议议程</h3>
       <el-input
@@ -181,6 +205,7 @@ const props = defineProps({
     type: Object,
     default: () => ({
       title: '',
+      firstlocation: '数据空间研究院（工投高新智谷B8座）',
       location: '', // 新增location字段
       agenda: '1.参观研究院展厅、观看宣传片\n2.数据空间研究院建设情况介绍\n3.座谈交流\n',
       meetingDate: '',

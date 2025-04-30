@@ -98,8 +98,7 @@ const router = useRouter()
 // 从 URL 中获取 user 参数
 const url_id = ref(route.query.id || '') // 默认为空字符串
 const url_user = ref(route.query.user || '')
-// const data = ref('2023-12-15T16:14:00')
-// const date = ref(new Date(data.value))
+
 const pagename = ref('')
 const currentUser = ref({
   role: '', // 可以是 'admin', 'receptionist' 或 'visitor'
@@ -119,13 +118,12 @@ const meetingData = ref({
   meetingTime: null,
   units: [],
   individuals: [],
+  researchMembers: [], // 添加研究院成员字段
 })
-// const meetingData = ref({})
-//---=============================-onMounted---========================--
+//---==================================onMounted================================
 onMounted(() => {
   // 确保正确设置用户角色
   currentUser.value.role = url_user.value || 'visitor' // 使用.value修改ref
-
   // 设置页面标题
   pagename.value =
     currentUser.value.role === 'admin'
@@ -133,14 +131,11 @@ onMounted(() => {
       : currentUser.value.role === 'receptionist'
         ? '接待员'
         : '访客'
-
-  // console.log('当前用户角色:', currentUser.value.role) // 确认角色值
   if (url_id.value) {
     // 如果url_id存在，则调用API获取数据
     url_id.value = deobfuscateId(url_id.value)
     // console.log('url_id', url_id.value)
     getMeetDetail(url_id.value)
-    // console.log('meetingData', meetingData)
   }
 })
 
@@ -155,16 +150,14 @@ function deobfuscateId(encoded) {
   }
 }
 const handleSubmit = (submitData) => {
-  // console.log('提交修改的数据:', submitData)
-
   try {
     // 为submitData加上id
     submitData.id = url_id.value
     // console.log('submitData', submitData)
     MeetAPI.update(submitData).then((res) => {
-      // console.log('update', res)
       if (res.status === 200) {
         ElMessage.success('修改成功')
+        console.log('res', res)
       } else {
         ElMessage.error('修改失败')
       }
@@ -176,56 +169,40 @@ const handleSubmit = (submitData) => {
 // 复制文档链接
 const handleGenerateDoc = async (submitData) => {
   try {
-    if (!submitData) {
-      ElMessage.warning('暂无会议信息')
-      return
-    }
-
     const meetingId = url_id.value
-    submitData.id = url_id.value
-
+    console.log('meetingId', meetingId)
     ElMessage.info('正在提交数据，请稍候...')
-    const updateRes = await MeetAPI.update(submitData)
-
-    if (updateRes.status === 200) {
-      ElMessage.success('修改成功')
-      ElMessage.info('正在生成文档，请稍候...')
-
-      const downloadRes = await MeetAPI.downloadWord(meetingId)
-
-      if (downloadRes.status === 200 && downloadRes.data.word_url) {
-        const data = {
-          id: meetingId,
-          word_url: downloadRes.data.word_url.url,
-          status: 'confirmed',
-        }
-
-        await MeetAPI.updateeword_url(data)
-        generatedDocUrl.value =
-          import.meta.env.VITE_API_BASE_URL + '/' + downloadRes.data.word_url.url
-        // await selectNumber()
-        licensePlate.value = meetingData.value.units
-          .map((unit) => unit.members.map((member) => member.plateNumber))
-          .join(', ')
-          .replace(/\s+/g, '')
-        // 显示结果页面
-        showResult.value = true
-
-        // 自动尝试下载
-        setTimeout(() => {
-          downloadDocument()
-        }, 500)
-
-        ElNotification.success({
-          title: '文档生成成功',
-          message: '会议文档已生成，请下载或复制链接',
-          duration: 5000,
-        })
-      } else {
-        ElMessage.error('文档生成失败')
+    const downloadRes = await MeetAPI.downloadWord(meetingId)
+    if (downloadRes.status === 200 && downloadRes.data.word_url) {
+      const data = {
+        id: meetingId,
+        word_url: downloadRes.data.word_url.url,
+        status: 'confirmed',
       }
+
+      await MeetAPI.updateeword_url(data)
+      generatedDocUrl.value =
+        import.meta.env.VITE_API_BASE_URL + '/' + downloadRes.data.word_url.url
+      // await selectNumber()
+      licensePlate.value = meetingData.value.units
+        .map((unit) => unit.members.map((member) => member.plateNumber))
+        .join(', ')
+        .replace(/\s+/g, '')
+      // 显示结果页面
+      showResult.value = true
+
+      // 自动尝试下载
+      setTimeout(() => {
+        downloadDocument()
+      }, 500)
+
+      ElNotification.success({
+        title: '文档生成成功',
+        message: '会议文档已生成，请下载或复制链接',
+        duration: 5000,
+      })
     } else {
-      ElMessage.error('修改失败')
+      ElMessage.error('文档生成失败')
     }
   } catch (error) {
     // console.error('生成文档出错:', error)
@@ -302,9 +279,6 @@ const closePage = async () => {
     //关闭所有窗口并跳转到/admin
     // const windows = window.open('', '_self')
     router.push('/admin')
-    // windows.close()
-    // 确保页面完全关闭后再跳转到/admin
-    // await new Promise((resolve) => setTimeout(resolve, 100))
   } catch (error) {
     // console.error('关闭页面出错:', error)
     router.push('/admin')
@@ -323,14 +297,28 @@ const getMeetDetail = async (meeting_id) => {
       const formattedData = formatMeetingData(res.data.meeting)
       // 3. 确保日期对象正确创建
       const meetingTime = new Date(formattedData.meetingTime)
+      // 分离研究院数据
+      const researchUnitIndex = formattedData.units.findIndex(
+        (unit) => unit.name === '数据空间研究院',
+      )
+      let researchMembers = []
 
+      if (researchUnitIndex !== -1) {
+        // 提取研究院成员
+        researchMembers = [...formattedData.units[researchUnitIndex].members]
+        // 从单位列表中移除研究院
+        formattedData.units.splice(researchUnitIndex, 1)
+      }
+      // 确保直接赋值整个对象以触发响应式更新
       meetingData.value = {
         ...formattedData,
         firstlocation: '数据空间研究院（工投高新智谷B8座）',
         meetingDate: meetingTime,
         meetingTime: meetingTime,
+        researchMembers: researchMembers, // 确保这里赋值
       }
-      // console.log('meetingData.value', meetingData.value)
+
+      console.log('加载的研究院成员:', researchMembers) // 调试用
     }
   } catch (error) {
     console.error('获取会议详情失败:', error)
@@ -368,6 +356,7 @@ function formatMeetingData(apiData) {
       name: individual.name,
       plateNumber: individual.plate_number, // 注意字段名转换
     })),
+    researchMembers: [], // 初始化为空数组，由调用方处理
   }
 }
 </script>
