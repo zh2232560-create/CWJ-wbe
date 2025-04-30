@@ -1,8 +1,8 @@
 <!-- FormBuilder.vue -->
 <template>
-  <el-form :model="form" label-width="auto" style="max-width: 800px">
+  <el-form :model="form" label-width="auto" style="max-width: 800px" :rules="rules" ref="formRef">
     <!-- 会议基本信息 -->
-    <el-form-item>
+    <el-form-item prop="title">
       <el-col :span="24">
         <h3><span style="color: red">*</span> 会议主题</h3>
       </el-col>
@@ -11,7 +11,7 @@
       </el-col>
     </el-form-item>
     <!-- 新增会议地点选择 -->
-    <el-form-item>
+    <el-form-item prop="locationGroup">
       <el-col :span="24">
         <h3><span style="color: red">*</span>会议地点</h3>
       </el-col>
@@ -50,7 +50,8 @@
         </el-select>
       </el-col>
     </el-form-item>
-    <el-form-item>
+
+    <el-form-item prop="agenda">
       <h3><span style="color: red">*</span>会议议程</h3>
       <el-input
         v-model="form.agenda"
@@ -63,7 +64,7 @@
 
     <h4><span style="color: red">*</span>会议时间</h4>
     <!-- 修改日期和时间选择器部分 -->
-    <el-form-item>
+    <el-form-item prop="meetingDateTime">
       <el-col :span="12">
         <el-date-picker
           v-model="form.meetingDate"
@@ -89,7 +90,71 @@
         ></el-time-picker>
       </el-col>
     </el-form-item>
+    <!-- 新增研究院人员信息 -->
+    <el-divider />
+    <h3>研究院参会人员</h3>
+    <div class="research-member-add">
+      <span class="institute-name">数据空间研究院</span>
+      <el-button
+        type="success"
+        size="small"
+        circle
+        @click="toggleMemberSelection"
+        class="add-research-btn"
+      >
+        <el-icon><Plus /></el-icon>
+      </el-button>
+    </div>
 
+    <!-- 研究院人员选择面板 -->
+    <el-card
+      v-if="showMemberSelection || form.researchMembers.length > 0"
+      shadow="hover"
+      class="member-selection-panel"
+    >
+      <el-checkbox-group v-model="selectedResearchMemberNames" @change="handleResearchMemberChange">
+        <el-row :gutter="20">
+          <el-col :span="8" v-for="(member, index) in researchMemberOptions" :key="index">
+            <el-checkbox :label="member.name">{{ member.name }}</el-checkbox>
+          </el-col>
+        </el-row>
+      </el-checkbox-group>
+    </el-card>
+
+    <!-- 已添加的研究院人员列表 -->
+    <div class="research-member-list">
+      <el-card
+        shadow="hover"
+        v-for="(member, index) in form.researchMembers"
+        :key="'research-member-' + index"
+        class="member-item"
+      >
+        <div class="member-header">
+          <span>人员 {{ index + 1 }}</span>
+          <el-button type="danger" size="small" text @click="removeResearchMember(index)">
+            <el-icon><Delete /></el-icon>删除
+          </el-button>
+        </div>
+        <el-form-item label="姓名">
+          <el-input v-model="member.name" placeholder="请输入姓名" />
+        </el-form-item>
+        <el-form-item label="职务">
+          <el-input v-model="member.position" placeholder="请输入职务" />
+        </el-form-item>
+      </el-card>
+    </div>
+
+    <!-- 添加研究院人员按钮 -->
+    <el-button
+      v-if="showMemberSelection || form.researchMembers.length > 0"
+      type="primary"
+      plain
+      @click="addEmptyResearchMember"
+      class="add-research-member-btn"
+      style="margin-bottom: 20px"
+    >
+      <el-icon><Plus /></el-icon>添加研究院人员
+    </el-button>
     <!-- 来访人员信息 -->
     <el-divider />
     <h3>来访信息</h3>
@@ -207,11 +272,12 @@ const props = defineProps({
       title: '',
       firstlocation: '数据空间研究院（工投高新智谷B8座）',
       location: '', // 新增location字段
-      agenda: '1.参观研究院展厅、观看宣传片\n2.数据空间研究院建设情况介绍\n3.座谈交流\n',
+      agenda: '1.参观研究院展厅、观看宣传片;\n2.数据空间研究院建设情况介绍;\n3.座谈交流。\n',
       meetingDate: '',
       meetingTime: '',
       units: [],
       individuals: [],
+      researchMembers: [], // 添加研究院成员字段
     }),
   },
   isCreatePage: {
@@ -219,27 +285,115 @@ const props = defineProps({
     default: false,
   },
 })
-//-===========================-data--=====================================
-// const form = reactive({
-//   title: props.initialData.title,
-//   location: props.initialData.location, // 初始化location
-//   agenda: props.initialData.agenda,
-//   meetingDate: props.initialData.meetingDate,
-//   meetingTime: props.initialData.meetingTime,
-//   units: props.initialData.units || [],
-//   individuals: props.initialData.individuals || [],
-// })
-// 1. 使用watch响应initialData变化
-const form = reactive({ ...props.initialData })
+//-===========================data=====================================
+const form = reactive({
+  ...props.initialData,
+  researchMembers: props.initialData.researchMembers || [], // 确保初始化为数组
+})
+//====================================yanjiuyuan==========================
+// 使用传入的研究院成员数据初始化
+const showMemberSelection = ref(false)
+const selectedResearchMemberNames = ref<string[]>([])
+// 研究院人员数据
+const researchMemberOptions = ref([
+  { name: '王佐成', position: '执行院长' },
+  { name: '廖勇', position: '副院长' },
+  { name: '洪日昌', position: '副院长' },
+  { name: '何向南', position: '副院长' },
+  { name: '胡家武', position: '院务会成员、首席专家' },
+  { name: '林传文', position: '院务会成员、院长助理' },
+  { name: '马韵洁', position: '院务会成员、副总工程师' },
+  { name: '王建', position: '院务会成员、副总工程师' },
+  { name: '范联伟', position: '院务会成员、副总工程师' },
+])
 
+// 切换成员选择面板
+const toggleMemberSelection = () => {
+  showMemberSelection.value = !showMemberSelection.value
+  if (showMemberSelection.value) {
+    selectedResearchMemberNames.value = form.researchMembers
+      .filter((member) => researchMemberOptions.value.some((opt) => opt.name === member.name))
+      .map((member) => member.name)
+  }
+}
+
+// 处理成员选择变化
+const handleResearchMemberChange = (selectedNames: string[]) => {
+  const manualMembers = form.researchMembers.filter(
+    (member) => !researchMemberOptions.value.some((opt) => opt.name === member.name),
+  )
+  const selectedMembers = selectedNames.map((name) => {
+    const option = researchMemberOptions.value.find((opt) => opt.name === name)
+    return { ...option! }
+  })
+  form.researchMembers = [...manualMembers, ...selectedMembers]
+}
+
+// 添加空白研究院成员
+const addEmptyResearchMember = () => {
+  form.researchMembers.push({
+    name: '',
+    position: '',
+  })
+  // console.log('添加空白研究院成员', form.researchMembers)
+}
+
+// 删除研究院成员
+const removeResearchMember = (index: number) => {
+  const removedMember = form.researchMembers[index]
+  form.researchMembers.splice(index, 1)
+  if (researchMemberOptions.value.some((opt) => opt.name === removedMember.name)) {
+    selectedResearchMemberNames.value = selectedResearchMemberNames.value.filter(
+      (name) => name !== removedMember.name,
+    )
+  }
+}
+
+// 修改 mergeResearchMembersToUnits 方法
+const mergeResearchMembersToUnits = () => {
+  // 确保过滤有效成员
+  const validMembers = form.researchMembers.filter(
+    (member) => member && member.name && member.name.trim() !== '',
+  )
+
+  // 查找或创建研究院单位
+  let researchUnit = form.units.find((unit) => unit.name === '数据空间研究院')
+
+  if (!researchUnit && validMembers.length > 0) {
+    researchUnit = {
+      name: '数据空间研究院',
+      members: [...validMembers],
+    }
+    form.units.push(researchUnit)
+  } else if (researchUnit) {
+    researchUnit.members = [...validMembers]
+  }
+
+  return {
+    ...form,
+    researchMembers: validMembers,
+  }
+}
+
+const updateSelectedResearchMembers = () => {
+  selectedResearchMemberNames.value = (form.researchMembers || [])
+    .filter(
+      (member) =>
+        member?.name && researchMemberOptions.value.some((opt) => opt.name === member.name),
+    )
+    .map((member) => member.name)
+}
+//================================================================================
 watch(
   () => props.initialData,
   (newVal) => {
-    Object.keys(newVal).forEach((key) => {
-      form[key] = newVal[key]
+    Object.assign(form, {
+      ...newVal,
+      researchMembers: newVal.researchMembers || [],
     })
+    updateSelectedResearchMembers()
   },
-  { deep: true },
+  { deep: true, immediate: true },
 )
 // 使用ref定义会议地点数据
 const meetingLocations = ref<Array<{ value: string; label: string }>>([])
@@ -248,11 +402,7 @@ const locationsLoading = ref(false)
 const isVisitor = computed(() => props.user.role === 'visitor')
 const isAdmin = computed(() => props.user.role === 'admin')
 const isReceptionist = computed(() => props.user.role === 'receptionist')
-// ======================================组件挂载=========================================
-// 在组件挂载时获取会议地点数据
-onMounted(() => {
-  fetchMeetingLocations()
-})
+const formRef = ref() // 表单引用
 // 来访人员操作方法
 const addUnit = () => {
   form.units.push({
@@ -260,7 +410,6 @@ const addUnit = () => {
     members: [{ name: '', position: '' }],
   })
 }
-
 const addMember = (unitIndex: number) => {
   form.units[unitIndex].members.push({
     name: '',
@@ -268,29 +417,62 @@ const addMember = (unitIndex: number) => {
     plateNumber: '', // 新增车牌号字段
   })
 }
-
 const removeUnit = (index: number) => {
   form.units.splice(index, 1)
 }
-
 const removeMember = (unitIndex: number, memberIndex: number) => {
   form.units[unitIndex].members.splice(memberIndex, 1)
 }
 
 // 事件发射
 const emit = defineEmits(['submit', 'confirm-and-generate', 'confirm-info'])
+const validateLocationGroup = (rule: any, value: any, callback: any) => {
+  if (!form.firstlocation) {
+    callback(new Error('请选择第一会议地点'))
+  } else if (!form.location) {
+    callback(new Error('请选择第二会议地点'))
+  } else {
+    callback()
+  }
+}
+// 表单验证规则
+const rules = reactive({
+  title: [{ required: true, message: '请输入会议主题', trigger: 'blur' }],
+  locationGroup: [{ validator: validateLocationGroup, trigger: 'change' }],
+  agenda: [{ required: true, message: '请输入会议议程', trigger: 'blur' }],
+  meetingDate: [{ required: true, message: '请选择会议日期', trigger: 'change' }],
+  meetingTime: [{ required: true, message: '请选择会议时间', trigger: 'change' }],
+  firstlocation: [{ required: true, message: '请选择第一会议地点', trigger: 'change' }],
+  location: [{ required: true, message: '请选择第二会议地点', trigger: 'change' }],
+})
+
 // 2. 确保日期处理正确
 const handleSubmit = () => {
-  const submitData = {
-    ...form,
-    meetingTime: combineDateTime(form.meetingDate, form.meetingTime),
-  }
-  emit('submit', submitData)
+  formRef.value.validate((valid) => {
+    if (valid) {
+      if (!form.title || !form.location || !form.agenda || !form.meetingDate || !form.meetingTime) {
+        ElMessage.error('请填写所有必填信息！')
+        return
+      }
+      // 合并研究院成员到单位列表
+      const mergedData = mergeResearchMembersToUnits()
+      const submitData = {
+        ...mergedData,
+        meetingTime: combineDateTime(form.meetingDate, form.meetingTime),
+      }
+      emit('submit', submitData)
+    } else {
+      ElMessage.error('请填写完整信息！')
+    }
+  })
 }
 // 管理员确认并生成模板
 const handleConfirmAndGenerate = () => {
+  // 合并研究院成员到单位列表
+  handleSubmit()
+  const mergedData = mergeResearchMembersToUnits()
   const submitData = {
-    ...form,
+    ...mergedData,
     meetingTime: combineDateTime(form.meetingDate, form.meetingTime),
   }
   emit('confirm-and-generate', submitData)
@@ -323,7 +505,7 @@ const fetchMeetingLocations = () => {
       }
     })
   } catch (error) {
-    console.error('获取会议地点失败:', error)
+    // console.error('获取会议地点失败:', error)
     // 可以设置默认值或显示错误信息
     meetingLocations.value = [
       { value: 'conference_room_1', label: '第一会议室' },
@@ -346,16 +528,23 @@ const disabledHours = () => {
   return [] // 不禁用任何小时
 }
 
-const disabledMinutes = () => {
-  const allowedMinutes = [0, 30, 50]
-  const disabled = []
-  for (let i = 0; i < 60; i++) {
-    if (allowedMinutes.indexOf(i) === -1) {
-      disabled.push(i) // 禁用非 0、30、50 的分钟
-    }
-  }
-  return disabled
-}
+// ======================================组件挂载=========================================
+// 在组件挂载时获取会议地点数据
+onMounted(() => {
+  fetchMeetingLocations()
+
+  // // 从初始数据中提取研究院成员
+  // if (props.initialData.researchMembers && props.initialData.researchMembers.length > 0) {
+  //   form.researchMembers = [...props.initialData.researchMembers]
+  // } else if (props.initialData.units) {
+  //   const researchUnit = props.initialData.units.find((unit) => unit.name === '数据空间研究院')
+  //   if (researchUnit) {
+  //     form.researchMembers = [...researchUnit.members]
+  //   }
+  // }
+  // 初始化选中状态
+  updateSelectedResearchMembers()
+})
 </script>
 
 <style scoped lang="scss">
@@ -432,5 +621,71 @@ const disabledMinutes = () => {
       margin-bottom: 10px;
     }
   }
+}
+
+/* 新增研究院人员样式 */
+.research-member-list {
+  margin-bottom: 20px;
+
+  .member-item {
+    margin-bottom: 15px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+
+    .member-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      font-weight: 500;
+    }
+
+    .el-form-item {
+      margin-bottom: 15px;
+    }
+  }
+}
+.research-member-add {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+
+  .institute-name {
+    flex: 1;
+    padding: 0 25px;
+    font-size: 16px;
+    font-weight: 500;
+  }
+
+  .add-research-btn {
+    margin-right: 25px;
+    background-color: #67c23a;
+    color: white;
+    border: none;
+
+    &:hover {
+      background-color: #5daf34;
+    }
+  }
+}
+
+.member-selection-panel {
+  margin-bottom: 20px;
+  padding: 15px;
+
+  .el-checkbox-group {
+    width: 100%;
+  }
+
+  .el-col {
+    margin-bottom: 10px;
+  }
+}
+
+.add-research-member-btn {
+  width: 100%;
+  margin-bottom: 20px;
 }
 </style>

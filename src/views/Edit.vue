@@ -157,7 +157,7 @@ const handleSubmit = (submitData) => {
     MeetAPI.update(submitData).then((res) => {
       if (res.status === 200) {
         ElMessage.success('修改成功')
-        console.log('res', res)
+        // console.log('res', res)
       } else {
         ElMessage.error('修改失败')
       }
@@ -170,7 +170,7 @@ const handleSubmit = (submitData) => {
 const handleGenerateDoc = async (submitData) => {
   try {
     const meetingId = url_id.value
-    console.log('meetingId', meetingId)
+    // console.log('meetingId', meetingId)
     ElMessage.info('正在提交数据，请稍候...')
     const downloadRes = await MeetAPI.downloadWord(meetingId)
     if (downloadRes.status === 200 && downloadRes.data.word_url) {
@@ -318,7 +318,7 @@ const getMeetDetail = async (meeting_id) => {
         researchMembers: researchMembers, // 确保这里赋值
       }
 
-      console.log('加载的研究院成员:', researchMembers) // 调试用
+      // console.log('加载的研究院成员:', researchMembers) // 调试用
     }
   } catch (error) {
     console.error('获取会议详情失败:', error)
