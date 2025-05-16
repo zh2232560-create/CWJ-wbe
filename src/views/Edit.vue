@@ -184,10 +184,20 @@ const handleGenerateDoc = async (submitData) => {
       generatedDocUrl.value =
         import.meta.env.VITE_API_BASE_URL + '/' + downloadRes.data.word_url.url
       // await selectNumber()
+      // licensePlate.value = meetingData.value.units
+      //   .map((unit) => unit.members.map((member) => member.plateNumber))
+      //   .join(', ')
+      //   .replace(/\s+/g, '')
+      // 更严格的版本
       licensePlate.value = meetingData.value.units
-        .map((unit) => unit.members.map((member) => member.plateNumber))
-        .join(', ')
-        .replace(/\s+/g, '')
+        .flatMap(
+          (unit) =>
+            unit.members
+              .map((member) => member.plateNumber?.trim()) // 去除每个车牌号的前后空格
+              .filter((plate) => plate), // 过滤掉空值
+        )
+        .join(',') // 直接用逗号连接
+        .replace(/\s*,\s*/g, ',') // 确保逗号前后没有空格
       // 显示结果页面
       showResult.value = true
 
@@ -287,7 +297,6 @@ const closePage = async () => {
 
 const handleConfirmInfo = (data) => {
   // console.log('确认信息:', data)
-  // 调用确认API
 }
 // 2. 修改获取数据方法
 const getMeetDetail = async (meeting_id) => {
@@ -299,7 +308,7 @@ const getMeetDetail = async (meeting_id) => {
       const meetingTime = new Date(formattedData.meetingTime)
       // 分离研究院数据
       const researchUnitIndex = formattedData.units.findIndex(
-        (unit) => unit.name === '数据空间研究院',
+        (unit) => unit.name === '合肥综合性国家科学中心数据空间研究院',
       )
       let researchMembers = []
 
@@ -317,8 +326,6 @@ const getMeetDetail = async (meeting_id) => {
         meetingTime: meetingTime,
         researchMembers: researchMembers, // 确保这里赋值
       }
-
-      // console.log('加载的研究院成员:', researchMembers) // 调试用
     }
   } catch (error) {
     console.error('获取会议详情失败:', error)

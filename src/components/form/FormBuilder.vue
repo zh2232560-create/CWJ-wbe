@@ -94,7 +94,7 @@
     <el-divider />
     <h3>研究院参会人员</h3>
     <div class="research-member-add">
-      <span class="institute-name">数据空间研究院</span>
+      <span class="institute-name">{{unitname}}</span>
       <el-button
         type="success"
         size="small"
@@ -294,6 +294,8 @@ const form = reactive({
 // 使用传入的研究院成员数据初始化
 const showMemberSelection = ref(false)
 const selectedResearchMemberNames = ref<string[]>([])
+const unitname = '合肥综合性国家科学中心数据空间研究院'
+
 // 研究院人员数据
 const researchMemberOptions = ref([
   { name: '王佐成', position: '执行院长' },
@@ -357,11 +359,11 @@ const mergeResearchMembersToUnits = () => {
   )
 
   // 查找或创建研究院单位
-  let researchUnit = form.units.find((unit) => unit.name === '数据空间研究院')
+  let researchUnit = form.units.find((unit) => unit.name === unitname)
 
   if (!researchUnit && validMembers.length > 0) {
     researchUnit = {
-      name: '数据空间研究院',
+      name: unitname,
       members: [...validMembers],
     }
     form.units.push(researchUnit)

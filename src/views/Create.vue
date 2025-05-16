@@ -72,10 +72,10 @@ const receptionistLink = ref('')
 const visitorLink = ref('')
 
 onMounted(() => {
-  MeetingApi.getMeetingList().then((res) => {
-    console.log(res)
-  })
-  console.log('currentUser', currentUser.value.role)
+  // MeetingApi.getMeetingList().then((res) => {
+  //   console.log(res)
+  // })
+  // console.log('currentUser', currentUser.value.role)
 })
 
 // 简单的Base64编码（不是真正的加密）
