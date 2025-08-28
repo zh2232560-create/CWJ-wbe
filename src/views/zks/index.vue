@@ -37,17 +37,20 @@
         </div>
         <!-- 相机预览 -->
         <div class="camera-preview">
-          <div v-show="!isCameraActive" class="camera-placeholder">
+          <div v-if="!isCameraActive" class="camera-placeholder">
             <el-icon size="64px" color="#909399"><Camera /></el-icon>
             <p>点击启动相机开始拍摄</p>
           </div>
-          <video
-            v-show="isCameraActive"
-            ref="videoElement"
-            autoplay
-            playsinline
-            class="camera-feed"
-          ></video>
+          <div v-show="isCameraActive" class="camera-active-container">
+            <video ref="videoElement" autoplay playsinline class="camera-feed"></video>
+            <img
+              v-show="isCameraActive"
+              :src="currentMaskImage"
+              alt="蒙版层"
+              class="camera-overlay"
+            />
+          </div>
+
           <!-- <p>{{ photoList[currentIndex].image_mask }}</p> -->
 
           <canvas ref="canvasElement" style="display: none"></canvas>
@@ -187,73 +190,73 @@ const photoList = ref([
     id: 1,
     key: 'LFD',
     name: '左脚脚面',
-    image_mask: '1',
+    image_mask: new URL('@/assets/zksstatic/zks_LFH.png', import.meta.url).href,
   },
   {
     id: 2,
     key: 'LFP',
     name: '左脚脚掌',
-    image_mask: '2',
+    image_mask: new URL('@/assets/zksstatic/zks_LFP.png', import.meta.url).href,
   },
   {
     id: 3,
     key: 'LFLS',
     name: '左脚左侧',
-    image_mask: '3',
+    image_mask: new URL('@/assets/zksstatic/zks_LFLS1.png', import.meta.url).href,
   },
   {
     id: 4,
     key: 'LFRS',
     name: '左脚右侧',
-    image_mask: 'https://ai-public.mastergo.com/ai/img_res/33ba784e3ab0597bd31dfd2911016fce.jpg',
+    image_mask: new URL('@/assets/zksstatic/zks_LFRS.png', import.meta.url).href,
   },
   {
     id: 5,
     key: 'LFH',
     name: '左脚脚跟',
-    image_mask: 'https://ai-public.mastergo.com/ai/img_res/33ba784e3ab0597bd31dfd2911016fce.jpg',
+    image_mask: new URL('@/assets/zksstatic/zks_LFH1.png', import.meta.url).href,
   },
   {
     id: 6,
     key: 'LF_TWS',
     name: '左脚脚趾缝',
-    image_mask: 'https://ai-public.mastergo.com/ai/img_res/33ba784e3ab0597bd31dfd2911016fce.jpg',
+    image_mask: new URL('@/assets/zksstatic/zks_LF_TWS.png', import.meta.url).href,
   },
   {
     id: 7,
     key: 'RFD',
     name: '右脚脚面',
-    image_mask: 'https://ai-public.mastergo.com/ai/img_res/33ba784e3ab0597bd31dfd2911016fce.jpg',
+    image_mask: new URL('@/assets/zksstatic/zks_RFD.png', import.meta.url).href,
   },
   {
     id: 8,
     key: 'RFP',
     name: '右脚脚掌',
-    image_mask: 'https://ai-public.mastergo.com/ai/img_res/33ba784e3ab0597bd31dfd2911016fce.jpg',
+    image_mask: new URL('@/assets/zksstatic/zks_RFP.png', import.meta.url).href,
   },
   {
     id: 9,
     key: 'RFLS',
     name: '右脚左侧',
-    image_mask: 'https://ai-public.mastergo.com/ai/img_res/33ba784e3ab0597bd31dfd2911016fce.jpg',
+    image_mask: new URL('@/assets/zksstatic/zks_RFLS.png', import.meta.url).href,
   },
   {
     id: 10,
     key: 'RFRS',
     name: '右脚右侧',
-    image_mask: 'https://ai-public.mastergo.com/ai/img_res/33ba784e3ab0597bd31dfd2911016fce.jpg',
+    image_mask: new URL('@/assets/zksstatic/zks_RFRS.png', import.meta.url).href,
   },
   {
     id: 11,
     key: 'RFH',
     name: '右脚脚跟',
-    image_mask: 'https://ai-public.mastergo.com/ai/img_res/33ba784e3ab0597bd31dfd2911016fce.jpg',
+    image_mask: new URL('@/assets/zksstatic/zks_RFH.png', import.meta.url).href,
   },
   {
     id: 12,
     key: 'RF_TWS',
     name: '右脚脚趾缝',
-    image_mask: 'https://ai-public.mastergo.com/ai/img_res/33ba784e3ab0597bd31dfd2911016fce.jpg',
+    image_mask: new URL('@/assets/zksstatic/zks_RF_TWS.png', import.meta.url).href,
   },
 ])
 
@@ -321,7 +324,10 @@ const totalPhotos = computed(() => photoList.value.length)
 const currentPhotoName = computed(() => photoList.value[currentIndex.value]?.name || '')
 const completedCount = computed(() => uploadedPhotoUrls.value.length)
 const progressPercentage = computed(() => (completedCount.value / totalPhotos.value) * 100)
-
+// 添加计算属性
+const currentMaskImage = computed(() => {
+  return photoList.value[currentIndex.value]?.image_mask || ''
+})
 // 进度颜色配置
 const progressColors = ref([
   { color: '#f56c6c', percentage: 20 },
@@ -530,6 +536,7 @@ const radio_change = (val) => {
 const handleSubmit = async () => {
   try {
     setCache('UserInfo', UserInfo.value)
+    //测试转到catch
     const add_id = await zksAPI.addUserInfo(UserInfo.value)
     if (add_id) {
       console.log('add_id', add_id)
@@ -538,12 +545,12 @@ const handleSubmit = async () => {
       // 刷新页面
       location.reload()
     }
-
     /**
      * 表单提交
      */
     // //刷新页面
   } catch (error) {
+    console.error('提交失败:', error)
     ElMessage.error('提交失败，请重试')
     return
   }
@@ -633,11 +640,12 @@ onBeforeUnmount(() => {
   background: #f8f9fa;
   border: 2px dashed #dcdfe6;
   border-radius: 12px;
-  display: flex;
+  /* display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: center; */
   overflow: hidden;
   margin-bottom: 20px;
+  position: relative;
 }
 .camera-placeholder {
   display: flex;
@@ -647,11 +655,38 @@ onBeforeUnmount(() => {
   height: 500px;
 }
 
+.camera-active-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.camera-mask {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 500px;
+  z-index: 1000;
+}
+
 .camera-feed {
   width: 100%;
   height: 100%;
   object-fit: cover;
   transform: scaleX(-1);
+}
+.camera-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  z-index: 10;
 }
 
 .capture-info {
