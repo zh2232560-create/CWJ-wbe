@@ -191,72 +191,84 @@ const photoList = ref([
     key: 'LFD',
     name: '左脚脚面',
     image_mask: new URL('@/assets/zksstatic/zks_LFH.png', import.meta.url).href,
+    phone_mask: new URL('@/assets/zksstatic/zks_LFD_mobile.png', import.meta.url).href,
   },
   {
     id: 2,
     key: 'LFP',
     name: '左脚脚掌',
     image_mask: new URL('@/assets/zksstatic/zks_LFP.png', import.meta.url).href,
+    phone_mask: new URL('@/assets/zksstatic/zks_LFP_mobile.png', import.meta.url).href,
   },
   {
     id: 3,
     key: 'LFLS',
     name: '左脚左侧',
     image_mask: new URL('@/assets/zksstatic/zks_LFLS1.png', import.meta.url).href,
+    phone_mask: new URL('@/assets/zksstatic/zks_LFLS_mobile.png', import.meta.url).href,
   },
   {
     id: 4,
     key: 'LFRS',
     name: '左脚右侧',
     image_mask: new URL('@/assets/zksstatic/zks_LFRS.png', import.meta.url).href,
+    phone_mask: new URL('@/assets/zksstatic/zks_LFRS_mobile.png', import.meta.url).href,
   },
   {
     id: 5,
     key: 'LFH',
     name: '左脚脚跟',
     image_mask: new URL('@/assets/zksstatic/zks_LFH1.png', import.meta.url).href,
+    phone_mask: new URL('@/assets/zksstatic/zks_LFH_mobile.png', import.meta.url).href,
   },
   {
     id: 6,
     key: 'LF_TWS',
     name: '左脚脚趾缝',
     image_mask: new URL('@/assets/zksstatic/zks_LF_TWS.png', import.meta.url).href,
+    phone_mask: new URL('@/assets/zksstatic/zks_LF_TWS_mobile.png', import.meta.url).href,
   },
   {
     id: 7,
     key: 'RFD',
     name: '右脚脚面',
     image_mask: new URL('@/assets/zksstatic/zks_RFD.png', import.meta.url).href,
+    phone_mask: new URL('@/assets/zksstatic/zks_RFD_mobile.png', import.meta.url).href,
   },
   {
     id: 8,
     key: 'RFP',
     name: '右脚脚掌',
     image_mask: new URL('@/assets/zksstatic/zks_RFP.png', import.meta.url).href,
+    phone_mask: new URL('@/assets/zksstatic/zks_RFP_mobile.png', import.meta.url).href,
   },
   {
     id: 9,
     key: 'RFLS',
     name: '右脚左侧',
     image_mask: new URL('@/assets/zksstatic/zks_RFLS.png', import.meta.url).href,
+    phone_mask: new URL('@/assets/zksstatic/zks_RFLS_mobile.png', import.meta.url).href,
   },
   {
     id: 10,
     key: 'RFRS',
     name: '右脚右侧',
     image_mask: new URL('@/assets/zksstatic/zks_RFRS.png', import.meta.url).href,
+    phone_mask: new URL('@/assets/zksstatic/zks_RFRS_mobile.png', import.meta.url).href,
   },
   {
     id: 11,
     key: 'RFH',
     name: '右脚脚跟',
     image_mask: new URL('@/assets/zksstatic/zks_RFH.png', import.meta.url).href,
+    phone_mask: new URL('@/assets/zksstatic/zks_RFH_mobile.png', import.meta.url).href,
   },
   {
     id: 12,
     key: 'RF_TWS',
     name: '右脚脚趾缝',
     image_mask: new URL('@/assets/zksstatic/zks_RF_TWS.png', import.meta.url).href,
+    phone_mask: new URL('@/assets/zksstatic/zks_RF_TWS_mobile.png', import.meta.url).href,
   },
 ])
 
@@ -310,7 +322,7 @@ const isLoading = ref(false)
 const showPreviewDialog = ref(false)
 const showCompletionDialog = ref(false)
 const previewImageUrl = ref('')
-
+const windowWidth = ref(window.innerWidth) // 添加窗口宽度响应式变量
 // 媒体流和元素引用
 const mediaStream = ref(null)
 const videoElement = ref(null)
@@ -324,10 +336,15 @@ const totalPhotos = computed(() => photoList.value.length)
 const currentPhotoName = computed(() => photoList.value[currentIndex.value]?.name || '')
 const completedCount = computed(() => uploadedPhotoUrls.value.length)
 const progressPercentage = computed(() => (completedCount.value / totalPhotos.value) * 100)
-// 添加计算属性
+// 响应式计算当前蒙版图片
 const currentMaskImage = computed(() => {
-  return photoList.value[currentIndex.value]?.image_mask || ''
+  const currentPhoto = photoList.value[currentIndex.value]
+  if (!currentPhoto) return ''
+
+  // 根据窗口宽度选择不同的蒙版
+  return windowWidth.value < 768 ? currentPhoto.phone_mask : currentPhoto.image_mask
 })
+
 // 进度颜色配置
 const progressColors = ref([
   { color: '#f56c6c', percentage: 20 },
@@ -337,6 +354,10 @@ const progressColors = ref([
   { color: '#6f7ad3', percentage: 100 },
 ])
 
+// 监听窗口大小变化
+const handleResize = () => {
+  windowWidth.value = window.innerWidth
+}
 // 启动相机
 const startCamera = async () => {
   if (!validateUserInfo()) {
@@ -473,6 +494,8 @@ const confirmPhoto = async () => {
     } else {
       // 所有照片完成
       //console.log('所有照片完成')
+      // 暂时关闭摄像头
+      isCameraActive.value = false
       showCompletionDialog.value = true
       // //console.log('UserInfo:', UserInfo.value)
     }
@@ -527,38 +550,53 @@ const validateUserInfo = () => {
 }
 const radio_change = (val) => {
   //console.log('radio_change', val)
-  console.log('UserInfo', UserInfo.value)
+  // console.log('UserInfo', UserInfo.value)
 }
 
 /**
  * 表单提交
  */
 const handleSubmit = async () => {
+  // 保存当前状态以便恢复
+  const previousCameraState = isCameraActive.value
+  const previousListener = removeBeforeUnloadListener
+
   try {
+    // 临时移除页面离开确认监听器，避免提交过程中刷新页面出现提示
+    if (removeBeforeUnloadListener) {
+      removeBeforeUnloadListener()
+      removeBeforeUnloadListener = null
+    }
+
     setCache('UserInfo', UserInfo.value)
-    //测试转到catch
+
+    // 测试转到catch
     const add_id = await zksAPI.addUserInfo(UserInfo.value)
-    if (add_id) {
+    if (add_id.status == 200) {
       console.log('add_id', add_id)
       ElMessage.success('提交成功！一秒后自动刷新页面')
       // showCompletionDialog.value = false
-      // 在刷新前移除页面离开确认监听器，避免刷新时出现确认提示
-      if (removeBeforeUnloadListener) {
-        removeBeforeUnloadListener()
-        removeBeforeUnloadListener = null
-      }
       // 延迟刷新以确保消息显示
       setTimeout(() => {
         location.reload()
       }, 1000)
+    } else {
+      // 提交返回了结果但可能不是成功状态
+      throw new Error('提交未返回预期结果,请检查API')
     }
-    /**
-     * 表单提交
-     */
-    // //刷新页面
   } catch (error) {
     console.error('提交失败:', error)
     ElMessage.error('提交失败，请重试')
+
+    // 提交失败后恢复之前的状态
+    // 恢复摄像头状态
+    isCameraActive.value = previousCameraState
+
+    // 恢复页面离开确认监听器（如果之前存在）
+    if (previousListener && !removeBeforeUnloadListener) {
+      removeBeforeUnloadListener = previousListener
+    }
+
     return
   }
 }
@@ -580,12 +618,14 @@ const enablePageLeaveConfirm = () => {
 let removeBeforeUnloadListener = null
 onMounted(() => {
   removeBeforeUnloadListener = enablePageLeaveConfirm()
+  window.addEventListener('resize', handleResize)
 })
 // 组件销毁时释放资源
 onBeforeUnmount(() => {
   if (removeBeforeUnloadListener) {
     removeBeforeUnloadListener()
   }
+  window.removeEventListener('resize', handleResize)
   stopCamera()
   if (previewImageUrl.value) {
     URL.revokeObjectURL(previewImageUrl.value)
@@ -686,7 +726,7 @@ onBeforeUnmount(() => {
 .camera-active-container {
   position: relative;
   width: 100%;
-  height: 100%;
+  /* height: 600px; */
   display: flex;
   justify-content: center;
   align-items: center;
@@ -789,6 +829,9 @@ onBeforeUnmount(() => {
     padding: 20px;
     margin: 10px;
   }
+  .camera-active-container {
+    height: 500px;
+  }
   .user-info-form {
     flex-direction: column;
     gap: 15px;
@@ -802,9 +845,9 @@ onBeforeUnmount(() => {
     min-width: 60px;
   }
 
-  .camera-preview {
+  /* .camera-preview {
     height: 300px;
-  }
+  } */
 
   .preview-width {
     width: 100%;
@@ -841,9 +884,9 @@ onBeforeUnmount(() => {
     padding: 15px;
   }
 
-  .camera-preview {
+  /* .camera-preview {
     height: 200px;
-  }
+  } */
 
   .capture-info h3 {
     font-size: 18px;

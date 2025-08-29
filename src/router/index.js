@@ -7,7 +7,7 @@ const routes = [
     component: () => import('@/views/Create.vue'),
     meta: {
       title: '创建会议',
-      favicon: '@/public//meeting/favicon.ico',
+      favicon: '/favicon.ico',
     },
   },
   {
@@ -17,7 +17,7 @@ const routes = [
     props: true,
     meta: {
       title: '编辑会议',
-      favicon: '@/public//meeting/favicon.ico',
+      favicon: '/favicon.ico',
     },
   },
   {
@@ -27,7 +27,7 @@ const routes = [
     props: true,
     meta: {
       title: '会议表单',
-      favicon: '@/public//meeting/favicon.ico',
+      favicon: '/favicon.ico',
     },
   },
   {
@@ -37,7 +37,7 @@ const routes = [
     props: true,
     meta: {
       title: '会议记录管理',
-      favicon: '@/public//meeting/favicon.ico',
+      favicon: '/favicon.ico',
     },
   },
   {
@@ -47,7 +47,7 @@ const routes = [
     props: true,
     meta: {
       title: '管理员编辑',
-      favicon: '@/public//meeting/favicon.ico',
+      favicon: '/favicon.ico',
     },
   },
   {
@@ -57,7 +57,7 @@ const routes = [
     props: true,
     meta: {
       title: '会议预约系统',
-      favicon: '/meeting//meeting/favicon.ico',
+      favicon: '/favicon.ico',
     },
   },
   /**
@@ -69,7 +69,7 @@ const routes = [
     component: () => import('@/views/zks/index.vue'),
     meta: {
       title: '足康树采集系统',
-      favicon: 'meeting/zks_favicon.ico', // 足康树主页面专属图标
+      favicon: '/zks_favicon.ico', // 足康树主页面专属图标
     },
   },
   {
