@@ -43,12 +43,29 @@
           </div>
           <div v-show="isCameraActive" class="camera-active-container">
             <video ref="videoElement" autoplay playsinline class="camera-feed"></video>
-            <img
+            <!-- <img
               v-show="isCameraActive"
               :src="currentMaskImage"
               alt="蒙版层"
               class="camera-overlay"
+              style="height: auto;"
+            /> -->
+            <el-image
+              :src="currentMaskImage"
+              :style="maskImageStyle"
+              :fit="fit"
+              alt="蒙版层"
+              class="camera-overlay"
+              v-show="isCameraActive"
             />
+            <!-- <image
+              v-show="isCameraActive"
+              :src="currentMaskImage"
+              mode="scaleToFill"
+              class="camera-overlay"
+              alt="蒙版层"
+              fit="cover"
+            /> -->
           </div>
 
           <!-- <p>{{ photoList[currentIndex].image_mask }}</p> -->
@@ -192,6 +209,10 @@ const photoList = ref([
     name: '左脚脚面',
     image_mask: new URL('@/assets/zksstatic/zks_LFH.png', import.meta.url).href,
     phone_mask: new URL('@/assets/zksstatic/zks_LFD_mobile.png', import.meta.url).href,
+    is_zhuan: {
+      horizontal: true, // 水平翻转
+      vertical: true, // 垂直翻转
+    },
   },
   {
     id: 2,
@@ -199,6 +220,10 @@ const photoList = ref([
     name: '左脚脚掌',
     image_mask: new URL('@/assets/zksstatic/zks_LFP.png', import.meta.url).href,
     phone_mask: new URL('@/assets/zksstatic/zks_LFP_mobile.png', import.meta.url).href,
+    is_zhuan: {
+      horizontal: false, // 水平翻转
+      vertical: false, // 垂直翻转
+    },
   },
   {
     id: 3,
@@ -206,6 +231,10 @@ const photoList = ref([
     name: '左脚左侧',
     image_mask: new URL('@/assets/zksstatic/zks_LFLS1.png', import.meta.url).href,
     phone_mask: new URL('@/assets/zksstatic/zks_LFLS_mobile.png', import.meta.url).href,
+    is_zhuan: {
+      horizontal: true, // 水平翻转
+      vertical: true, // 垂直翻转
+    },
   },
   {
     id: 4,
@@ -213,6 +242,10 @@ const photoList = ref([
     name: '左脚右侧',
     image_mask: new URL('@/assets/zksstatic/zks_LFRS.png', import.meta.url).href,
     phone_mask: new URL('@/assets/zksstatic/zks_LFRS_mobile.png', import.meta.url).href,
+    is_zhuan: {
+      horizontal: true, // 水平翻转
+      vertical: true, // 垂直翻转
+    },
   },
   {
     id: 5,
@@ -220,6 +253,10 @@ const photoList = ref([
     name: '左脚脚跟',
     image_mask: new URL('@/assets/zksstatic/zks_LFH1.png', import.meta.url).href,
     phone_mask: new URL('@/assets/zksstatic/zks_LFH_mobile.png', import.meta.url).href,
+    is_zhuan: {
+      horizontal: false, // 水平翻转
+      vertical: false, // 垂直翻转
+    },
   },
   {
     id: 6,
@@ -227,6 +264,10 @@ const photoList = ref([
     name: '左脚脚趾缝',
     image_mask: new URL('@/assets/zksstatic/zks_LF_TWS.png', import.meta.url).href,
     phone_mask: new URL('@/assets/zksstatic/zks_LF_TWS_mobile.png', import.meta.url).href,
+    is_zhuan: {
+      horizontal: true, // 水平翻转
+      vertical: true, // 垂直翻转
+    },
   },
   {
     id: 7,
@@ -234,6 +275,10 @@ const photoList = ref([
     name: '右脚脚面',
     image_mask: new URL('@/assets/zksstatic/zks_RFD.png', import.meta.url).href,
     phone_mask: new URL('@/assets/zksstatic/zks_RFD_mobile.png', import.meta.url).href,
+    is_zhuan: {
+      horizontal: true, // 水平翻转
+      vertical: true, // 垂直翻转
+    },
   },
   {
     id: 8,
@@ -241,6 +286,10 @@ const photoList = ref([
     name: '右脚脚掌',
     image_mask: new URL('@/assets/zksstatic/zks_RFP.png', import.meta.url).href,
     phone_mask: new URL('@/assets/zksstatic/zks_RFP_mobile.png', import.meta.url).href,
+    is_zhuan: {
+      horizontal: false, // 水平翻转
+      vertical: false, // 垂直翻转
+    },
   },
   {
     id: 9,
@@ -248,6 +297,10 @@ const photoList = ref([
     name: '右脚左侧',
     image_mask: new URL('@/assets/zksstatic/zks_RFLS.png', import.meta.url).href,
     phone_mask: new URL('@/assets/zksstatic/zks_RFLS_mobile.png', import.meta.url).href,
+    is_zhuan: {
+      horizontal: true, // 水平翻转
+      vertical: true, // 垂直翻转
+    },
   },
   {
     id: 10,
@@ -255,6 +308,10 @@ const photoList = ref([
     name: '右脚右侧',
     image_mask: new URL('@/assets/zksstatic/zks_RFRS.png', import.meta.url).href,
     phone_mask: new URL('@/assets/zksstatic/zks_RFRS_mobile.png', import.meta.url).href,
+    is_zhuan: {
+      horizontal: true, // 水平翻转
+      vertical: true, // 垂直翻转
+    },
   },
   {
     id: 11,
@@ -262,6 +319,10 @@ const photoList = ref([
     name: '右脚脚跟',
     image_mask: new URL('@/assets/zksstatic/zks_RFH.png', import.meta.url).href,
     phone_mask: new URL('@/assets/zksstatic/zks_RFH_mobile.png', import.meta.url).href,
+    is_zhuan: {
+      horizontal: false, // 水平翻转
+      vertical: false, // 垂直翻转
+    },
   },
   {
     id: 12,
@@ -269,6 +330,10 @@ const photoList = ref([
     name: '右脚脚趾缝',
     image_mask: new URL('@/assets/zksstatic/zks_RF_TWS.png', import.meta.url).href,
     phone_mask: new URL('@/assets/zksstatic/zks_RF_TWS_mobile.png', import.meta.url).href,
+    is_zhuan: {
+      horizontal: true, // 水平翻转
+      vertical: true, // 垂直翻转
+    },
   },
 ])
 
@@ -343,6 +408,32 @@ const currentMaskImage = computed(() => {
 
   // 根据窗口宽度选择不同的蒙版
   return windowWidth.value < 768 ? currentPhoto.phone_mask : currentPhoto.image_mask
+})
+
+// 对应的计算属性
+const maskImageStyle = computed(() => {
+  const baseStyle = {
+    width: '100%',
+    height: '100%',
+  }
+
+  const currentPhoto = photoList.value[currentIndex.value]
+  if (currentPhoto && currentPhoto.is_zhuan) {
+    const flipConfig = currentPhoto.is_zhuan
+    let scaleX = flipConfig.horizontal ? -1 : 1
+    let scaleY = flipConfig.vertical ? -1 : 1
+
+    return {
+      ...baseStyle,
+      transform: `scale(${scaleX}, ${scaleY})`,
+      '-webkit-transform': `scale(${scaleX}, ${scaleY})`,
+      '-moz-transform': `scale(${scaleX}, ${scaleY})`,
+      '-o-transform': `scale(${scaleX}, ${scaleY})`,
+      '-ms-transform': `scale(${scaleX}, ${scaleY})`,
+    }
+  }
+
+  return baseStyle
 })
 
 // 进度颜色配置
