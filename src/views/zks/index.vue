@@ -141,7 +141,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onBeforeUnmount } from 'vue'
+import { ref, computed, onBeforeUnmount, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Camera, VideoCamera, Check, Refresh, SuccessFilled } from '@element-plus/icons-vue'
 import zksAPI from '@/api/zks'
@@ -163,7 +163,7 @@ const mockUploadPhoto = async (file, photoName) => {
   try {
     // 2. 直接传递 file 对象给 API
     const res = await zksAPI.upload(file)
-    console.log('上传成功:', res.data)
+    //console.log('上传成功:', res.data)
     return res.data // 返回后端返回的结果（通常包含图片URL）
   } catch (err) {
     console.error('上传失败:', err.response?.data || err.message)
@@ -438,15 +438,15 @@ const confirmPhoto = async () => {
     // 从blob URL获取blob对象
     const response = await fetch(previewImageUrl.value)
     const blob = await response.blob()
-    // console.log('blob', blob)
+    // //console.log('blob', blob)
     // 将Blob转换为File对象
     const fileName = `${currentPhotoName.value}_${Date.now()}.jpg`
     const file = new File([blob], fileName, { type: 'image/jpeg' })
-    // console.log('file', file)
+    // //console.log('file', file)
 
     // 上传照片
     const imageUrl = await mockUploadPhoto(file, currentPhotoName.value)
-    // console.log('imageUrl', imageUrl.image)
+    // //console.log('imageUrl', imageUrl.image)
 
     // 存储上传成功的链接
     uploadedPhotoUrls.value.push({
@@ -469,12 +469,12 @@ const confirmPhoto = async () => {
     // 移动到下一张或完成
     if (currentIndex.value < totalPhotos.value - 1) {
       currentIndex.value++
-      // console.log('uploadedPhotoUrls-weiwacheng:', uploadedPhotoUrls.value)
+      // //console.log('uploadedPhotoUrls-weiwacheng:', uploadedPhotoUrls.value)
     } else {
       // 所有照片完成
-      console.log('所有照片完成')
+      //console.log('所有照片完成')
       showCompletionDialog.value = true
-      // console.log('UserInfo:', UserInfo.value)
+      // //console.log('UserInfo:', UserInfo.value)
     }
   } catch (error) {
     console.error('上传失败:', error)
@@ -526,7 +526,7 @@ const validateUserInfo = () => {
   return true
 }
 const radio_change = (val) => {
-  console.log('radio_change', val)
+  //console.log('radio_change', val)
   console.log('UserInfo', UserInfo.value)
 }
 
@@ -540,10 +540,17 @@ const handleSubmit = async () => {
     const add_id = await zksAPI.addUserInfo(UserInfo.value)
     if (add_id) {
       console.log('add_id', add_id)
-      ElMessage.success('提交成功！')
+      ElMessage.success('提交成功！一秒后自动刷新页面')
       // showCompletionDialog.value = false
-      // 刷新页面
-      location.reload()
+      // 在刷新前移除页面离开确认监听器，避免刷新时出现确认提示
+      if (removeBeforeUnloadListener) {
+        removeBeforeUnloadListener()
+        removeBeforeUnloadListener = null
+      }
+      // 延迟刷新以确保消息显示
+      setTimeout(() => {
+        location.reload()
+      }, 1000)
     }
     /**
      * 表单提交
@@ -555,9 +562,30 @@ const handleSubmit = async () => {
     return
   }
 }
+// 页面离开确认
+const enablePageLeaveConfirm = () => {
+  const handleBeforeUnload = (e) => {
+    if (isCameraActive.value) {
+      e.preventDefault()
+      e.returnValue = '您有未保存的拍摄数据，确定要离开吗？'
+      return '您有未保存的拍摄数据，确定要离开吗？'
+    }
+  }
 
+  window.addEventListener('beforeunload', handleBeforeUnload)
+  return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+}
+
+// 组件挂载时启用离开确认
+let removeBeforeUnloadListener = null
+onMounted(() => {
+  removeBeforeUnloadListener = enablePageLeaveConfirm()
+})
 // 组件销毁时释放资源
 onBeforeUnmount(() => {
+  if (removeBeforeUnloadListener) {
+    removeBeforeUnloadListener()
+  }
   stopCamera()
   if (previewImageUrl.value) {
     URL.revokeObjectURL(previewImageUrl.value)
@@ -676,7 +704,7 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transform: scaleX(-1);
+  /* transform: scaleX(-1); */
 }
 .camera-overlay {
   position: absolute;
