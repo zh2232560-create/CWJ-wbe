@@ -1,5 +1,7 @@
 <template>
   <div class="simple-photo-capture">
+    <!-- 新增：使用加载组件 -->
+    <loading-mask :visible="isSubmitting" text="正在提交，请等待..." />
     <!-- 顶部进度指示 -->
     <div class="progress-header">
       <div class="progress-info">
@@ -53,7 +55,7 @@
             <el-image
               :src="currentMaskImage"
               :style="maskImageStyle"
-              :fit="fit"
+              fit="fill"
               alt="蒙版层"
               class="camera-overlay"
               v-show="isCameraActive"
@@ -75,7 +77,7 @@
 
         <!-- 当前拍摄信息 -->
         <div class="capture-info">
-          <h3>{{ currentPhotoName }}</h3>
+          <h3>{{ currentPhotoName }}<span class="photo-direction">(客人方向)</span></h3>
           <p>第 {{ currentIndex + 1 }} 张 / 共 {{ totalPhotos }} 张</p>
         </div>
 
@@ -147,7 +149,18 @@
         <el-icon color="#67c23a" size="48px"><SuccessFilled /></el-icon>
         <h3>恭喜！所有照片拍摄完成</h3>
         <p>共 {{ totalPhotos }} 张照片已全部上传</p>
-
+        <!-- 新增：是否异常选择框 -->
+        <div class="abnormal-selection">
+          <span class="abnormal-label">拍摄者脚部状态：</span>
+          <el-radio-group
+            v-model="UserInfo.is_abnormal"
+            class="abnormal-radio"
+            @change="radio_change($event)"
+          >
+            <el-radio value="0">正常</el-radio>
+            <el-radio value="1">异常</el-radio>
+          </el-radio-group>
+        </div>
         <div class="completion-actions">
           <el-button @click="restartCapture">重新拍摄</el-button>
           <el-button type="primary" @click="handleSubmit">全部提交</el-button>
@@ -160,9 +173,10 @@
 <script setup>
 import { ref, computed, onBeforeUnmount, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Camera, VideoCamera, Check, Refresh, SuccessFilled } from '@element-plus/icons-vue'
+import { Camera, VideoCamera, Check, Refresh, SuccessFilled, User } from '@element-plus/icons-vue'
 import zksAPI from '@/api/zks'
 import { setCache } from '@/utils/cache'
+import LoadingMask from '@/components/common/loading.vue'
 // 模拟上传函数
 /**
  * 上传图片函数
@@ -373,7 +387,7 @@ const UserInfo = ref({
   RFRS: '',
   RFH: '',
   RF_TWS: '',
-  image13: '',
+  is_abnormal: '',
   image14: '',
   image15: '',
 })
@@ -395,7 +409,8 @@ const canvasElement = ref(null)
 
 // 存储上传成功的图片链接
 const uploadedPhotoUrls = ref([])
-
+// 默认隐藏，提交时设为true
+const isSubmitting = ref(false)
 // 计算属性
 const totalPhotos = computed(() => photoList.value.length)
 const currentPhotoName = computed(() => photoList.value[currentIndex.value]?.name || '')
@@ -648,6 +663,10 @@ const radio_change = (val) => {
  * 表单提交
  */
 const handleSubmit = async () => {
+  if (!UserInfo.value.is_abnormal) {
+    ElMessage.warning('请选择是否异常')
+    return
+  }
   // 保存当前状态以便恢复
   const previousCameraState = isCameraActive.value
   const previousListener = removeBeforeUnloadListener
@@ -659,17 +678,24 @@ const handleSubmit = async () => {
       removeBeforeUnloadListener = null
     }
 
+    // 1. 提交开始：显示加载蒙版
+    isSubmitting.value = true
+
     setCache('UserInfo', UserInfo.value)
 
     // 测试转到catch
     const add_id = await zksAPI.addUserInfo(UserInfo.value)
     if (add_id.status == 200) {
-      console.log('add_id', add_id)
-      ElMessage.success('提交成功！一秒后自动刷新页面')
-      // showCompletionDialog.value = false
-      // 延迟刷新以确保消息显示
+      setTimeout(() => {
+        console.log('add_id', add_id)
+        ElMessage.success('提交成功！一秒后自动刷新页面')
+        // showCompletionDialog.value = false
+        // 延迟刷新以确保消息显示
+        // console.log(' UserInfo.value', UserInfo.value)
+      }, 1500)
       setTimeout(() => {
         location.reload()
+        // isSubmitting.value = false
       }, 1000)
     } else {
       // 提交返回了结果但可能不是成功状态
@@ -678,15 +704,14 @@ const handleSubmit = async () => {
   } catch (error) {
     console.error('提交失败:', error)
     ElMessage.error('提交失败，请重试')
-
     // 提交失败后恢复之前的状态
     // 恢复摄像头状态
     isCameraActive.value = previousCameraState
-
     // 恢复页面离开确认监听器（如果之前存在）
     if (previousListener && !removeBeforeUnloadListener) {
       removeBeforeUnloadListener = previousListener
     }
+    isSubmitting.value = false
 
     return
   }
@@ -863,6 +888,11 @@ onBeforeUnmount(() => {
   color: #909399;
   font-size: 16px;
 }
+.photo-direction {
+  padding-left: 10px;
+  font-size: 10px;
+  color: brown;
+}
 
 .capture-actions {
   margin-top: 20px;
@@ -908,7 +938,24 @@ onBeforeUnmount(() => {
   gap: 12px;
   justify-content: center;
 }
+/* 新增：是否异常选择框样式 */
+.abnormal-selection {
+  margin: 16px 0; /* 上下间距，避免与其他元素拥挤 */
+  display: flex;
+  align-items: center;
+  justify-content: center; /* 水平居中 */
+  color: #606266; /* 与提示文字颜色一致 */
+}
 
+.abnormal-label {
+  font-weight: 500; /* 标签加粗，突出引导 */
+  margin-right: 12px; /* 与选择框间距 */
+}
+
+.abnormal-radio {
+  display: flex;
+  gap: 24px; /* 两个选项之间的间距 */
+}
 /* 响应式设计 */
 @media (max-width: 768px) {
   .camera-main {
@@ -916,8 +963,22 @@ onBeforeUnmount(() => {
     align-items: start;
   }
 
+  .capture-actions {
+    bottom: 0px;
+    position: fixed;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    padding: 0 20px;
+    z-index: 100; /* 确保在其他内容上方 */
+    margin-top: 0; /* 移除原有的margin-top */
+    background-color: #fff;
+    height: 80px;
+  }
+
   .camera-container {
-    padding: 20px;
+    padding-bottom: 80px;
     margin: 10px;
   }
   .camera-active-container {
@@ -959,6 +1020,14 @@ onBeforeUnmount(() => {
   .camera-main {
     /* flex-direction: column; */
     align-items: start;
+  }
+
+  .capture-actions {
+    bottom: 0px;
+  }
+
+  .camera-container {
+    padding-bottom: 60px;
   }
 
   .user-info-form {
