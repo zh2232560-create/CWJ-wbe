@@ -148,6 +148,11 @@
         <el-icon color="#67c23a" size="48px"><SuccessFilled /></el-icon>
         <h3>恭喜！所有照片拍摄完成</h3>
         <p>共 {{ totalPhotos }} 张照片已全部上传</p>
+        <!-- 额外拍摄提示 -->
+        <p v-if="extraPhotosCount > 0 && extraPhotosCount < 2" class="extra-photo-hint">
+          已额外拍摄 {{ extraPhotosCount }} 张，还可再拍 {{ 2 - extraPhotosCount }} 张
+        </p>
+        <p v-if="extraPhotosCount >= 2" class="extra-photo-hint">已完成额外2张照片的拍摄</p>
         <!-- 新增：是否异常选择框 -->
         <div class="abnormal-selection">
           <span class="abnormal-label">拍摄者脚部状态：</span>
@@ -161,7 +166,9 @@
           </el-radio-group>
         </div>
         <div class="completion-actions">
-          <el-button @click="restartCapture">重新拍摄</el-button>
+          <el-button @click="takeExtraPhoto" :disabled="extraPhotosCount >= 2">
+            再拍一张
+          </el-button>
           <el-button type="primary" @click="handleSubmit">全部提交</el-button>
         </div>
       </div>
@@ -299,8 +306,8 @@ const UserInfo = ref({
   RFH: 'exit',
   RF_TWS: 'exit',
   is_abnormal: '',
-  image14: '',
-  image15: '',
+  extraPhotos1: '',
+  extraPhotos2: '',
 })
 
 // 状态管理
@@ -322,6 +329,12 @@ const canvasElement = ref(null)
 const uploadedPhotoUrls = ref([])
 // 默认隐藏，提交时设为true
 const isSubmitting = ref(false)
+
+// 新增：跟踪额外拍摄的照片数量
+const extraPhotosCount = ref(0)
+// 新增：标记是否正在进行额外拍摄
+const isTakingExtraPhoto = ref(false)
+
 // 计算属性
 const totalPhotos = computed(() => photoList.value.length)
 const currentPhotoName = computed(() => photoList.value[currentIndex.value]?.name || '')
@@ -476,76 +489,132 @@ const confirmPhoto = async () => {
     // 从blob URL获取blob对象
     const response = await fetch(previewImageUrl.value)
     const blob = await response.blob()
-    // //console.log('blob', blob)
-    // 将Blob转换为File对象
-    const fileName = `${currentPhotoName.value}_${Date.now()}.jpg`
-    const file = new File([blob], fileName, { type: 'image/jpeg' })
-    // //console.log('file', file)
+    // 判断是否是额外拍摄
+    if (isTakingExtraPhoto.value) {
+      // 额外拍摄的文件命名（区分是第几张额外照片）
+      const fileName = `额外_${extraPhotosCount.value + 1}_${Date.now()}.jpg`
+      const file = new File([blob], fileName, { type: 'image/jpeg' })
 
-    // 上传照片
-    const imageUrl = await mockUploadPhoto(file, currentPhotoName.value)
-    // //console.log('imageUrl', imageUrl.image)
+      // 上传额外拍摄的照片
+      const imageUrl = await mockUploadPhoto(file, `额外照片${extraPhotosCount.value + 1}`)
 
-    // 存储上传成功的链接
-    uploadedPhotoUrls.value.push({
-      name: currentPhotoName.value,
-      url: imageUrl,
-      index: currentIndex.value,
-    })
-    // 1. 获取当前照片的 key（如 LFD、LFP 等）
-    const currentPhotoKey = photoList.value[currentIndex.value].key
-    // 2. 将 imageUrl 赋值给 UserInfo 中对应 key 的字段
-    UserInfo.value[currentPhotoKey] = imageUrl.image
+      // 存储上传记录
+      uploadedPhotoUrls.value.push({
+        name: `额外照片${extraPhotosCount.value + 1}`,
+        url: imageUrl,
+        index: `extra_${extraPhotosCount.value}`,
+      })
 
-    ElMessage.success('照片上传成功！')
+      // 根据计数存储到对应的字段（LFLS/LFRS）
+      if (extraPhotosCount.value === 0) {
+        UserInfo.value.LFLS = imageUrl.image // 第一张额外照片存到LFLS
+      } else {
+        UserInfo.value.LFRS = imageUrl.image // 第二张额外照片存到LFRS
+      }
 
-    // 释放blob URL
-    URL.revokeObjectURL(previewImageUrl.value)
-    previewImageUrl.value = ''
-    showPreviewDialog.value = false
+      // 增加额外拍摄计数
+      extraPhotosCount.value++
 
-    // 移动到下一张或完成
-    if (currentIndex.value < totalPhotos.value - 1) {
-      currentIndex.value++
-      // //console.log('uploadedPhotoUrls-weiwacheng:', uploadedPhotoUrls.value)
+      // 提示成功信息
+      ElMessage.success(`额外照片${extraPhotosCount.value}上传成功！`)
+
+      // 释放资源并关闭预览
+      URL.revokeObjectURL(previewImageUrl.value)
+      previewImageUrl.value = ''
+      showPreviewDialog.value = false
+
+      // 停止相机并返回完成对话框
+      stopCamera()
+      isTakingExtraPhoto.value = false // 重置额外拍摄状态
+      showCompletionDialog.value = true // 重新显示完成对话框
     } else {
-      // 所有照片完成
-      //console.log('所有照片完成')
-      // 暂时关闭摄像头
-      isCameraActive.value = false
-      showCompletionDialog.value = true
-      // //console.log('UserInfo:', UserInfo.value)
+      // 将Blob转换为File对象
+      const fileName = `${currentPhotoName.value}_${Date.now()}.jpg`
+      const file = new File([blob], fileName, { type: 'image/jpeg' })
+      // 上传照片
+      const imageUrl = await mockUploadPhoto(file, currentPhotoName.value)
+      // //console.log('imageUrl', imageUrl.image)
+
+      // 存储上传成功的链接
+      uploadedPhotoUrls.value.push({
+        name: currentPhotoName.value,
+        url: imageUrl,
+        index: currentIndex.value,
+      })
+      // 1. 获取当前照片的 key（如 LFD、LFP 等）
+      const currentPhotoKey = photoList.value[currentIndex.value].key
+      // 2. 将 imageUrl 赋值给 UserInfo 中对应 key 的字段
+      UserInfo.value[currentPhotoKey] = imageUrl.image
+
+      ElMessage.success('照片上传成功！')
+
+      // 释放blob URL
+      URL.revokeObjectURL(previewImageUrl.value)
+      previewImageUrl.value = ''
+      showPreviewDialog.value = false
+
+      // 移动到下一张或完成
+      if (currentIndex.value < totalPhotos.value - 1) {
+        currentIndex.value++
+      } else {
+        // 暂时关闭摄像头
+        isCameraActive.value = false
+        showCompletionDialog.value = true
+      }
     }
   } catch (error) {
     console.error('上传失败:', error)
     ElMessage.error('上传失败，请重试')
   }
-
   isUploading.value = false
 }
 
 // 重新开始拍摄
-const restartCapture = () => {
-  //提示是否确认重新开始
-  ElMessageBox.confirm('是否确认重新开始拍摄？', '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning',
-  })
-    .then(() => {
-      // 停止相机
-      stopCamera()
-      // 重置拍摄状态
-      currentIndex.value = 0
-      uploadedPhotoUrls.value = []
-      showCompletionDialog.value = false
-    })
-    .catch(() => {
-      ElMessage({
-        type: 'info',
-        message: '取消操作',
-      })
-    })
+// const restartCapture = () => {
+//   //提示是否确认重新开始
+//   ElMessageBox.confirm('是否确认重新开始拍摄？', '提示', {
+//     confirmButtonText: '确定',
+//     cancelButtonText: '取消',
+//     type: 'warning',
+//   })
+//     .then(() => {
+//       // 停止相机
+//       stopCamera()
+//       // 重置拍摄状态
+//       currentIndex.value = 0
+//       uploadedPhotoUrls.value = []
+//       showCompletionDialog.value = false
+//     })
+//     .catch(() => {
+//       ElMessage({
+//         type: 'info',
+//         message: '取消操作',
+//       })
+//     })
+// }
+
+// 新增：处理额外拍摄功能
+const takeExtraPhoto = async () => {
+  if (extraPhotosCount.value >= 2) {
+    ElMessage.warning('最多只能额外拍摄2张照片')
+    return
+  }
+
+  // 关闭完成对话框
+  showCompletionDialog.value = false
+  // 标记为正在进行额外拍摄
+  isTakingExtraPhoto.value = true
+
+  // 启动相机
+  await startCamera()
+
+  // 如果相机启动成功，自动打开拍摄状态
+  if (isCameraActive.value) {
+    // 可以在这里添加提示，说明正在拍摄的是第几张额外照片
+    ElMessage.info(`正在拍摄第 ${extraPhotosCount.value + 1} 张额外照片`)
+  } else {
+    isTakingExtraPhoto.value = false
+  }
 }
 
 /**
@@ -868,6 +937,12 @@ onBeforeUnmount(() => {
 .abnormal-radio {
   display: flex;
   gap: 24px; /* 两个选项之间的间距 */
+}
+/* 新增：额外拍摄提示样式 */
+.extra-photo-hint {
+  color: #606266;
+  margin: 10px 0;
+  font-size: 14px;
 }
 /* 响应式设计 */
 @media (max-width: 768px) {
