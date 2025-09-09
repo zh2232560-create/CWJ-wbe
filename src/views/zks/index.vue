@@ -12,7 +12,6 @@
     </div>
 
     <!-- 主拍摄区域 -->
-
     <div class="camera-main">
       <div class="camera-container">
         <!-- 用户基础信息填写 -->
@@ -240,50 +239,6 @@ const photoList = ref([
     },
   },
   {
-    id: 3,
-    key: 'LFLS',
-    name: '左脚左侧',
-    image_mask: new URL('@/assets/zksstatic/zks_LFLS1.png', import.meta.url).href,
-    phone_mask: new URL('@/assets/zksstatic/zks_LFLS_mobile.png', import.meta.url).href,
-    is_zhuan: {
-      horizontal: true, // 水平翻转
-      vertical: true, // 垂直翻转
-    },
-  },
-  {
-    id: 4,
-    key: 'LFRS',
-    name: '左脚右侧',
-    image_mask: new URL('@/assets/zksstatic/zks_LFRS.png', import.meta.url).href,
-    phone_mask: new URL('@/assets/zksstatic/zks_LFRS_mobile.png', import.meta.url).href,
-    is_zhuan: {
-      horizontal: true, // 水平翻转
-      vertical: true, // 垂直翻转
-    },
-  },
-  {
-    id: 5,
-    key: 'LFH',
-    name: '左脚脚跟',
-    image_mask: new URL('@/assets/zksstatic/zks_LFH1.png', import.meta.url).href,
-    phone_mask: new URL('@/assets/zksstatic/zks_LFH_mobile.png', import.meta.url).href,
-    is_zhuan: {
-      horizontal: false, // 水平翻转
-      vertical: false, // 垂直翻转
-    },
-  },
-  {
-    id: 6,
-    key: 'LF_TWS',
-    name: '左脚脚趾缝',
-    image_mask: new URL('@/assets/zksstatic/zks_LF_TWS.png', import.meta.url).href,
-    phone_mask: new URL('@/assets/zksstatic/zks_LF_TWS_mobile.png', import.meta.url).href,
-    is_zhuan: {
-      horizontal: true, // 水平翻转
-      vertical: true, // 垂直翻转
-    },
-  },
-  {
     id: 7,
     key: 'RFD',
     name: '右脚脚面',
@@ -303,50 +258,6 @@ const photoList = ref([
     is_zhuan: {
       horizontal: false, // 水平翻转
       vertical: false, // 垂直翻转
-    },
-  },
-  {
-    id: 9,
-    key: 'RFLS',
-    name: '右脚左侧',
-    image_mask: new URL('@/assets/zksstatic/zks_RFLS.png', import.meta.url).href,
-    phone_mask: new URL('@/assets/zksstatic/zks_RFLS_mobile.png', import.meta.url).href,
-    is_zhuan: {
-      horizontal: true, // 水平翻转
-      vertical: true, // 垂直翻转
-    },
-  },
-  {
-    id: 10,
-    key: 'RFRS',
-    name: '右脚右侧',
-    image_mask: new URL('@/assets/zksstatic/zks_RFRS.png', import.meta.url).href,
-    phone_mask: new URL('@/assets/zksstatic/zks_RFRS_mobile.png', import.meta.url).href,
-    is_zhuan: {
-      horizontal: true, // 水平翻转
-      vertical: true, // 垂直翻转
-    },
-  },
-  {
-    id: 11,
-    key: 'RFH',
-    name: '右脚脚跟',
-    image_mask: new URL('@/assets/zksstatic/zks_RFH.png', import.meta.url).href,
-    phone_mask: new URL('@/assets/zksstatic/zks_RFH_mobile.png', import.meta.url).href,
-    is_zhuan: {
-      horizontal: false, // 水平翻转
-      vertical: false, // 垂直翻转
-    },
-  },
-  {
-    id: 12,
-    key: 'RF_TWS',
-    name: '右脚脚趾缝',
-    image_mask: new URL('@/assets/zksstatic/zks_RF_TWS.png', import.meta.url).href,
-    phone_mask: new URL('@/assets/zksstatic/zks_RF_TWS_mobile.png', import.meta.url).href,
-    is_zhuan: {
-      horizontal: true, // 水平翻转
-      vertical: true, // 垂直翻转
     },
   },
 ])
@@ -377,16 +288,16 @@ const UserInfo = ref({
   sex: '',
   LFD: '',
   LFP: '',
-  LFLS: '',
-  LFRS: '',
-  LFH: '',
-  LF_TWS: '',
+  LFLS: 'exit',
+  LFRS: 'exit',
+  LFH: 'exit',
+  LF_TWS: 'exit',
   RFD: '',
   RFP: '',
-  RFLS: '',
-  RFRS: '',
-  RFH: '',
-  RF_TWS: '',
+  RFLS: 'exit',
+  RFRS: 'exit',
+  RFH: 'exit',
+  RF_TWS: 'exit',
   is_abnormal: '',
   image14: '',
   image15: '',
@@ -687,16 +598,18 @@ const handleSubmit = async () => {
     const add_id = await zksAPI.addUserInfo(UserInfo.value)
     if (add_id.status == 200) {
       setTimeout(() => {
+        showCompletionDialog.value = false
+        isSubmitting.value = false
         console.log('add_id', add_id)
         ElMessage.success('提交成功！一秒后自动刷新页面')
         // showCompletionDialog.value = false
         // 延迟刷新以确保消息显示
         // console.log(' UserInfo.value', UserInfo.value)
+        setTimeout(() => {
+          location.reload()
+          // isSubmitting.value = false
+        }, 1000)
       }, 1500)
-      setTimeout(() => {
-        location.reload()
-        // isSubmitting.value = false
-      }, 1000)
     } else {
       // 提交返回了结果但可能不是成功状态
       throw new Error('提交未返回预期结果,请检查API')

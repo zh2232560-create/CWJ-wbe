@@ -69,7 +69,7 @@ const routes = [
     component: () => import('@/views/zks/index.vue'),
     meta: {
       title: '足康树采集系统',
-      favicon: '/zks_favicon.ico', // 足康树主页面专属图标
+      favicon: '/zks_camera.ico', // 足康树主页面专属图标
     },
   },
   {
