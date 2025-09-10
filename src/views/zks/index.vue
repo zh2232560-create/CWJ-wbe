@@ -14,28 +14,6 @@
     <!-- 主拍摄区域 -->
     <div class="camera-main">
       <div class="camera-container">
-        <!-- 用户基础信息填写 -->
-        <div class="user-info-form">
-          <div class="form-item">
-            <label class="form-label">年龄：</label>
-            <el-input
-              v-model="UserInfo.age"
-              placeholder="请输入年龄"
-              type="number"
-              min="1"
-              max="120"
-              style="width: 120px"
-            />
-          </div>
-
-          <div class="form-item">
-            <label class="form-label">性别：</label>
-            <el-radio-group v-model="UserInfo.sex" @change="radio_change($event)">
-              <el-radio value="1">男</el-radio>
-              <el-radio value="0">女</el-radio>
-            </el-radio-group>
-          </div>
-        </div>
         <!-- 相机预览 -->
         <div class="camera-preview">
           <div v-if="!isCameraActive" class="camera-placeholder">
@@ -44,40 +22,26 @@
           </div>
           <div v-show="isCameraActive" class="camera-active-container">
             <video ref="videoElement" autoplay playsinline class="camera-feed"></video>
-            <!-- <img
-              v-show="isCameraActive"
-              :src="currentMaskImage"
-              alt="蒙版层"
-              class="camera-overlay"
-              style="height: auto;"
-            /> -->
             <el-image
               :src="currentMaskImage"
               :style="maskImageStyle"
               fit="fill"
               alt="蒙版层"
               class="camera-overlay"
-              v-show="isCameraActive"
+              v-show="isCameraActive && !isTakingExtraPhoto"
             />
-            <!-- <image
-              v-show="isCameraActive"
-              :src="currentMaskImage"
-              mode="scaleToFill"
-              class="camera-overlay"
-              alt="蒙版层"
-              fit="cover"
-            /> -->
           </div>
-
-          <!-- <p>{{ photoList[currentIndex].image_mask }}</p> -->
 
           <canvas ref="canvasElement" style="display: none"></canvas>
         </div>
 
         <!-- 当前拍摄信息 -->
-        <div class="capture-info">
-          <h3>{{ currentPhotoName }}<span class="photo-direction">(客人方向)</span></h3>
+        <div class="capture-info" v-if="!isTakingExtraPhoto">
+          <h3>{{ currentPhotoName }}</h3>
           <p>第 {{ currentIndex + 1 }} 张 / 共 {{ totalPhotos }} 张</p>
+        </div>
+        <div class="capture-info" v-else>
+          <h3>补充照片</h3>
         </div>
 
         <!-- 拍摄按钮 -->
@@ -153,8 +117,39 @@
           已额外拍摄 {{ extraPhotosCount }} 张，还可再拍 {{ 2 - extraPhotosCount }} 张
         </p>
         <p v-if="extraPhotosCount >= 2" class="extra-photo-hint">已完成额外2张照片的拍摄</p>
+
+        <!-- 用户基础信息填写 - 移到此处 -->
+        <div class="user-info-form">
+          <div class="form-item">
+            <span style="color: red">*</span><label class="form-label">年龄：</label>
+            <el-input
+              v-model="UserInfo.age"
+              placeholder="请输入年龄"
+              type="number"
+              min="1"
+              max="120"
+              style="width: 120px"
+            />
+          </div>
+
+          <div class="form-item">
+            <span style="color: red">*</span><label class="form-label">性别：</label>
+            <el-radio-group v-model="UserInfo.sex" @change="radio_change($event)">
+              <el-radio value="1">男</el-radio>
+              <el-radio value="0">女</el-radio>
+            </el-radio-group>
+          </div>
+          <div class="form-item">
+            <span style="color: red">*</span><label class="form-label">拍摄者脚部状态：</label>
+            <el-radio-group v-model="UserInfo.is_abnormal" @change="radio_change($event)">
+              <el-radio value="0">正常</el-radio>
+              <el-radio value="1">异常</el-radio>
+            </el-radio-group>
+          </div>
+        </div>
+
         <!-- 新增：是否异常选择框 -->
-        <div class="abnormal-selection">
+        <!-- <div class="abnormal-selection">
           <span class="abnormal-label">拍摄者脚部状态：</span>
           <el-radio-group
             v-model="UserInfo.is_abnormal"
@@ -164,7 +159,7 @@
             <el-radio value="0">正常</el-radio>
             <el-radio value="1">异常</el-radio>
           </el-radio-group>
-        </div>
+        </div> -->
         <div class="completion-actions">
           <el-button @click="takeExtraPhoto" :disabled="extraPhotosCount >= 2">
             再拍一张
@@ -178,49 +173,23 @@
 
 <script setup>
 import { ref, computed, onBeforeUnmount, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Camera, VideoCamera, Check, Refresh, SuccessFilled, User } from '@element-plus/icons-vue'
 import zksAPI from '@/api/zks'
 import { setCache } from '@/utils/cache'
 import LoadingMask from '@/components/common/loading.vue'
+
 // 模拟上传函数
-/**
- * 上传图片函数
- * @param {} file
- * @param {*} photoName
- */
 const mockUploadPhoto = async (file, photoName) => {
-  // return new Promise((resolve) => {
-  //   setTimeout(() => {
-  //     const mockUrl = `https://example.com/uploads/${Date.now()}-${photoName}.jpg`
-  //     resolve(mockUrl)
-  //   }, 1000)
-  // })
-  // 直接返回接口请求的 Promise，外部可根据需要处理成功和失败
   try {
-    // 2. 直接传递 file 对象给 API
     const res = await zksAPI.upload(file)
-    //console.log('上传成功:', res.data)
-    return res.data // 返回后端返回的结果（通常包含图片URL）
+    return res.data
   } catch (err) {
     console.error('上传失败:', err.response?.data || err.message)
-    throw err // 抛出错误让调用方处理
+    throw err
   }
 }
-/**
- *  ['LFD', ''],//左脚脚面
-  ['LFP', ''],//左脚脚掌
-  ['LFLS', ''],//左脚左侧
-  ['LFRS', ''],//左脚右侧
-  ['LFH', ''],//左脚脚跟
-  ['LF_TWS', ''],//左脚脚趾缝
-  ['RFD', ''],//右脚脚面
-  ['RFP', ''],//右脚脚掌
-  ['RFLS', ''],//右脚左侧
-  ['RFRS', ''],//右脚右侧
-  ['RFH', ''],//右脚脚跟
-  ['RF_TWS', ''],//右脚脚趾缝
- */
+
 // 拍摄配置
 const photoList = ref([
   {
@@ -230,8 +199,8 @@ const photoList = ref([
     image_mask: new URL('@/assets/zksstatic/zks_LFH.png', import.meta.url).href,
     phone_mask: new URL('@/assets/zksstatic/zks_LFD_mobile.png', import.meta.url).href,
     is_zhuan: {
-      horizontal: true, // 水平翻转
-      vertical: true, // 垂直翻转
+      horizontal: true,
+      vertical: true,
     },
   },
   {
@@ -241,8 +210,8 @@ const photoList = ref([
     image_mask: new URL('@/assets/zksstatic/zks_LFP.png', import.meta.url).href,
     phone_mask: new URL('@/assets/zksstatic/zks_LFP_mobile.png', import.meta.url).href,
     is_zhuan: {
-      horizontal: false, // 水平翻转
-      vertical: false, // 垂直翻转
+      horizontal: false,
+      vertical: false,
     },
   },
   {
@@ -252,8 +221,8 @@ const photoList = ref([
     image_mask: new URL('@/assets/zksstatic/zks_RFD.png', import.meta.url).href,
     phone_mask: new URL('@/assets/zksstatic/zks_RFD_mobile.png', import.meta.url).href,
     is_zhuan: {
-      horizontal: true, // 水平翻转
-      vertical: true, // 垂直翻转
+      horizontal: true,
+      vertical: true,
     },
   },
   {
@@ -263,32 +232,13 @@ const photoList = ref([
     image_mask: new URL('@/assets/zksstatic/zks_RFP.png', import.meta.url).href,
     phone_mask: new URL('@/assets/zksstatic/zks_RFP_mobile.png', import.meta.url).href,
     is_zhuan: {
-      horizontal: false, // 水平翻转
-      vertical: false, // 垂直翻转
+      horizontal: false,
+      vertical: false,
     },
   },
 ])
 
-/**
- * ['name', '默认用户'],
-  ['sex', ''],
-  ['age', ''],
-  ['LFD', ''],//左脚脚面
-  ['LFP', ''],//左脚脚掌
-  ['LFLS', ''],//左脚左侧
-  ['LFRS', ''],//左脚右侧
-  ['LFH', ''],//左脚脚跟
-  ['LF_TWS', ''],//左脚脚趾缝
-  ['RFD', ''],//右脚脚面
-  ['RFP', ''],//右脚脚掌
-  ['RFLS', ''],//右脚左侧
-  ['RFRS', ''],//右脚右侧
-  ['RFH', ''],//右脚脚跟
-  ['RF_TWS', ''],//右脚脚趾缝
-  ['image13', ''],//预留图
-  ['image14', ''],//预留图
-  ['image15', ''],//预留图
- */
+// 用户信息
 const UserInfo = ref({
   name: '默认用户',
   age: '',
@@ -319,7 +269,7 @@ const isLoading = ref(false)
 const showPreviewDialog = ref(false)
 const showCompletionDialog = ref(false)
 const previewImageUrl = ref('')
-const windowWidth = ref(window.innerWidth) // 添加窗口宽度响应式变量
+const windowWidth = ref(window.innerWidth)
 // 媒体流和元素引用
 const mediaStream = ref(null)
 const videoElement = ref(null)
@@ -390,9 +340,7 @@ const handleResize = () => {
 }
 // 启动相机
 const startCamera = async () => {
-  if (!validateUserInfo()) {
-    return
-  }
+  // 移除年龄和性别的验证，允许直接启动相机
   isLoading.value = true
   try {
     mediaStream.value = await navigator.mediaDevices.getUserMedia({
@@ -475,11 +423,6 @@ const retakePhoto = () => {
     }
     showPreviewDialog.value = false
   })
-  // // 释放之前的blob URL
-  // if (previewImageUrl.value) {
-  //   URL.revokeObjectURL(previewImageUrl.value)
-  // }
-  // showPreviewDialog.value = false
 }
 
 // 确认照片并上传
@@ -507,9 +450,9 @@ const confirmPhoto = async () => {
 
       // 根据计数存储到对应的字段（LFLS/LFRS）
       if (extraPhotosCount.value === 0) {
-        UserInfo.value.LFLS = imageUrl.image // 第一张额外照片存到LFLS
+        UserInfo.value.extraPhotos1 = imageUrl.image // 第一张额外照片存到LFLS
       } else {
-        UserInfo.value.LFRS = imageUrl.image // 第二张额外照片存到LFRS
+        UserInfo.value.extraPhotos2 = imageUrl.image // 第二张额外照片存到LFRS
       }
 
       // 增加额外拍摄计数
@@ -533,7 +476,6 @@ const confirmPhoto = async () => {
       const file = new File([blob], fileName, { type: 'image/jpeg' })
       // 上传照片
       const imageUrl = await mockUploadPhoto(file, currentPhotoName.value)
-      // //console.log('imageUrl', imageUrl.image)
 
       // 存储上传成功的链接
       uploadedPhotoUrls.value.push({
@@ -541,9 +483,9 @@ const confirmPhoto = async () => {
         url: imageUrl,
         index: currentIndex.value,
       })
-      // 1. 获取当前照片的 key（如 LFD、LFP 等）
+      // 获取当前照片的 key（如 LFD、LFP 等）
       const currentPhotoKey = photoList.value[currentIndex.value].key
-      // 2. 将 imageUrl 赋值给 UserInfo 中对应 key 的字段
+      // 将 imageUrl 赋值给 UserInfo 中对应 key 的字段
       UserInfo.value[currentPhotoKey] = imageUrl.image
 
       ElMessage.success('照片上传成功！')
@@ -568,30 +510,6 @@ const confirmPhoto = async () => {
   }
   isUploading.value = false
 }
-
-// 重新开始拍摄
-// const restartCapture = () => {
-//   //提示是否确认重新开始
-//   ElMessageBox.confirm('是否确认重新开始拍摄？', '提示', {
-//     confirmButtonText: '确定',
-//     cancelButtonText: '取消',
-//     type: 'warning',
-//   })
-//     .then(() => {
-//       // 停止相机
-//       stopCamera()
-//       // 重置拍摄状态
-//       currentIndex.value = 0
-//       uploadedPhotoUrls.value = []
-//       showCompletionDialog.value = false
-//     })
-//     .catch(() => {
-//       ElMessage({
-//         type: 'info',
-//         message: '取消操作',
-//       })
-//     })
-// }
 
 // 新增：处理额外拍摄功能
 const takeExtraPhoto = async () => {
@@ -618,9 +536,8 @@ const takeExtraPhoto = async () => {
 }
 
 /**
- * 表单验证
+ * 表单验证 - 现在在提交前验证
  */
-// 可以添加表单验证
 const validateUserInfo = () => {
   if (!UserInfo.value.age || UserInfo.value.age <= 0 || UserInfo.value.age > 120) {
     ElMessage.warning('请输入有效的年龄（1-120岁）')
@@ -632,21 +549,27 @@ const validateUserInfo = () => {
     return false
   }
 
+  if (!UserInfo.value.is_abnormal) {
+    ElMessage.warning('请选择是否异常')
+    return false
+  }
+
   return true
 }
+
 const radio_change = (val) => {
-  //console.log('radio_change', val)
-  // console.log('UserInfo', UserInfo.value)
+  // 处理单选框变化
 }
 
 /**
  * 表单提交
  */
 const handleSubmit = async () => {
-  if (!UserInfo.value.is_abnormal) {
-    ElMessage.warning('请选择是否异常')
+  // 现在在提交前验证所有信息
+  if (!validateUserInfo()) {
     return
   }
+
   // 保存当前状态以便恢复
   const previousCameraState = isCameraActive.value
   const previousListener = removeBeforeUnloadListener
@@ -663,7 +586,6 @@ const handleSubmit = async () => {
 
     setCache('UserInfo', UserInfo.value)
 
-    // 测试转到catch
     const add_id = await zksAPI.addUserInfo(UserInfo.value)
     if (add_id.status == 200) {
       setTimeout(() => {
@@ -671,33 +593,26 @@ const handleSubmit = async () => {
         isSubmitting.value = false
         console.log('add_id', add_id)
         ElMessage.success('提交成功！一秒后自动刷新页面')
-        // showCompletionDialog.value = false
-        // 延迟刷新以确保消息显示
-        // console.log(' UserInfo.value', UserInfo.value)
         setTimeout(() => {
           location.reload()
-          // isSubmitting.value = false
         }, 1000)
       }, 1500)
     } else {
-      // 提交返回了结果但可能不是成功状态
       throw new Error('提交未返回预期结果,请检查API')
     }
   } catch (error) {
     console.error('提交失败:', error)
     ElMessage.error('提交失败，请重试')
     // 提交失败后恢复之前的状态
-    // 恢复摄像头状态
     isCameraActive.value = previousCameraState
-    // 恢复页面离开确认监听器（如果之前存在）
     if (previousListener && !removeBeforeUnloadListener) {
       removeBeforeUnloadListener = previousListener
     }
     isSubmitting.value = false
-
     return
   }
 }
+
 // 页面离开确认
 const enablePageLeaveConfirm = () => {
   const handleBeforeUnload = (e) => {
@@ -732,6 +647,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/* 原有样式保持不变，只调整用户信息表单在对话框中的样式 */
 .simple-photo-capture {
   min-height: 100vh;
   background: linear-gradient(135deg, #f5f7fa 0%, #e4e7ed 100%);
@@ -777,38 +693,12 @@ onBeforeUnmount(() => {
   width: 100%;
 }
 
-/* 用户基础信息表单 */
-.user-info-form {
-  display: flex;
-  justify-content: center;
-  gap: 40px;
-  padding: 15px 20px;
-  background: #f0f2f5;
-  border-radius: 8px;
-  margin-bottom: 20px;
-}
-
-.form-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.form-label {
-  font-weight: 500;
-  color: #606266;
-  white-space: nowrap;
-}
-
 .camera-preview {
   width: 100%;
   height: 80%;
   background: #f8f9fa;
   border: 2px dashed #dcdfe6;
   border-radius: 12px;
-  /* display: flex;
-  align-items: center;
-  justify-content: center; */
   overflow: hidden;
   margin-bottom: 20px;
   position: relative;
@@ -824,25 +714,15 @@ onBeforeUnmount(() => {
 .camera-active-container {
   position: relative;
   width: 100%;
-  /* height: 600px; */
   display: flex;
   justify-content: center;
   align-items: center;
-}
-.camera-mask {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-  height: 500px;
-  z-index: 1000;
 }
 
 .camera-feed {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  /* transform: scaleX(-1); */
 }
 .camera-overlay {
   position: absolute;
@@ -920,34 +800,60 @@ onBeforeUnmount(() => {
   gap: 12px;
   justify-content: center;
 }
-/* 新增：是否异常选择框样式 */
-.abnormal-selection {
-  margin: 16px 0; /* 上下间距，避免与其他元素拥挤 */
+
+/* 用户基础信息表单 - 调整在对话框中的样式 */
+.user-info-form {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  padding: 15px 20px;
+  background: #f3f3f3;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.form-item {
   display: flex;
   align-items: center;
-  justify-content: center; /* 水平居中 */
-  color: #606266; /* 与提示文字颜色一致 */
+  gap: 8px;
+}
+
+.form-label {
+  font-weight: 500;
+  color: #606266;
+  white-space: nowrap;
+}
+
+/* 异常选择框样式 */
+.abnormal-selection {
+  margin: 16px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #606266;
 }
 
 .abnormal-label {
-  font-weight: 500; /* 标签加粗，突出引导 */
-  margin-right: 12px; /* 与选择框间距 */
+  font-weight: 500;
+  margin-right: 12px;
 }
 
 .abnormal-radio {
   display: flex;
-  gap: 24px; /* 两个选项之间的间距 */
+  gap: 24px;
 }
-/* 新增：额外拍摄提示样式 */
+
+/* 额外拍摄提示样式 */
 .extra-photo-hint {
   color: #606266;
   margin: 10px 0;
   font-size: 14px;
 }
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   .camera-main {
-    /* flex-direction: column; */
     align-items: start;
   }
 
@@ -959,8 +865,8 @@ onBeforeUnmount(() => {
     display: flex;
     justify-content: center;
     padding: 0 20px;
-    z-index: 100; /* 确保在其他内容上方 */
-    margin-top: 0; /* 移除原有的margin-top */
+    z-index: 100;
+    margin-top: 0;
     background-color: #fff;
     height: 80px;
   }
@@ -972,22 +878,6 @@ onBeforeUnmount(() => {
   .camera-active-container {
     height: 500px;
   }
-  .user-info-form {
-    flex-direction: column;
-    gap: 15px;
-    align-items: flex-start;
-  }
-  .form-item {
-    width: 100%;
-  }
-
-  .form-label {
-    min-width: 60px;
-  }
-
-  /* .camera-preview {
-    height: 300px;
-  } */
 
   .preview-width {
     width: 100%;
@@ -1006,7 +896,6 @@ onBeforeUnmount(() => {
 
 @media (max-width: 480px) {
   .camera-main {
-    /* flex-direction: column; */
     align-items: start;
   }
 
@@ -1019,22 +908,21 @@ onBeforeUnmount(() => {
   }
 
   .user-info-form {
-    padding: 12px 15px;
-    gap: 12px;
+    flex-direction: column;
+    gap: 15px;
+    align-items: flex-start;
+    padding: 12px 30px;
   }
 
   .form-item {
-    flex-direction: column;
-    align-items: flex-start;
+    width: 100%;
+    align-items: center;
     gap: 5px;
   }
+
   .progress-header {
     padding: 15px;
   }
-
-  /* .camera-preview {
-    height: 200px;
-  } */
 
   .capture-info h3 {
     font-size: 18px;
