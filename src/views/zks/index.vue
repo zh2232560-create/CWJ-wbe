@@ -122,14 +122,19 @@
         <div class="user-info-form">
           <div class="form-item">
             <span style="color: red">*</span><label class="form-label">年龄：</label>
-            <el-input
+            <!-- 将输入框改为下拉选择框 -->
+            <el-select
               v-model="UserInfo.age"
-              placeholder="请输入年龄"
-              type="number"
-              min="1"
-              max="120"
+              placeholder="请选择年龄范围"
               style="width: 120px"
-            />
+              @change="handleAgeRangeChange"
+            >
+              <el-option label="0-20岁" value="15" />
+              <el-option label="20-30岁" value="25" />
+              <el-option label="30-40岁" value="35" />
+              <el-option label="40-50岁" value="45" />
+              <el-option label="50岁以上" value="55" />
+            </el-select>
           </div>
 
           <div class="form-item">
@@ -534,13 +539,18 @@ const takeExtraPhoto = async () => {
     isTakingExtraPhoto.value = false
   }
 }
-
+// 处理年龄范围选择变化
+const handleAgeRangeChange = (value) => {
+  console.log('选择的年龄范围：', value)
+  console.log('选择的年龄范围：', UserInfo.value)
+}
 /**
  * 表单验证 - 现在在提交前验证
  */
 const validateUserInfo = () => {
-  if (!UserInfo.value.age || UserInfo.value.age <= 0 || UserInfo.value.age > 120) {
-    ElMessage.warning('请输入有效的年龄（1-120岁）')
+  if (!UserInfo.value.age) {
+    // 验证是否选择了年龄范围
+    ElMessage.warning('请选择年龄范围')
     return false
   }
 
