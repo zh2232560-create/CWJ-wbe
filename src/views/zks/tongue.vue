@@ -156,16 +156,16 @@
 
         <!-- 新增：是否异常选择框 -->
         <!-- <div class="abnormal-selection">
-          <span class="abnormal-label">拍摄者脚部状态：</span>
-          <el-radio-group
-            v-model="UserInfo.is_abnormal"
-            class="abnormal-radio"
-            @change="radio_change($event)"
-          >
-            <el-radio value="0">正常</el-radio>
-            <el-radio value="1">异常</el-radio>
-          </el-radio-group>
-        </div> -->
+            <span class="abnormal-label">拍摄者脚部状态：</span>
+            <el-radio-group
+              v-model="UserInfo.is_abnormal"
+              class="abnormal-radio"
+              @change="radio_change($event)"
+            >
+              <el-radio value="0">正常</el-radio>
+              <el-radio value="1">异常</el-radio>
+            </el-radio-group>
+          </div> -->
         <div class="completion-actions">
           <el-button @click="takeExtraPhoto" :disabled="extraPhotosCount >= 2">
             再拍一张
@@ -199,9 +199,20 @@ const mockUploadPhoto = async (file, photoName) => {
 // 拍摄配置
 const photoList = ref([
   {
+    id: 0,
+    key: 'RFH', // 上传的图片链接放到RFH中
+    name: '舌部',
+    image_mask: new URL('@/assets/zksstatic/tongue.png', import.meta.url).href,
+    phone_mask: new URL('@/assets/zksstatic/tongue.png', import.meta.url).href,
+    is_zhuan: {
+      horizontal: false,
+      vertical: false,
+    },
+  },
+  {
     id: 1,
     key: 'LFD',
-    name: '左脚脚面',
+    name: '脚部：左脚脚面',
     image_mask: new URL('@/assets/zksstatic/zks_LFH.png', import.meta.url).href,
     phone_mask: new URL('@/assets/zksstatic/zks_LFD_mobile.png', import.meta.url).href,
     is_zhuan: {
@@ -212,7 +223,7 @@ const photoList = ref([
   {
     id: 2,
     key: 'LFP',
-    name: '左脚脚掌',
+    name: '脚部：左脚脚掌',
     image_mask: new URL('@/assets/zksstatic/zks_LFP.png', import.meta.url).href,
     phone_mask: new URL('@/assets/zksstatic/zks_LFP_mobile.png', import.meta.url).href,
     is_zhuan: {
@@ -223,7 +234,7 @@ const photoList = ref([
   {
     id: 7,
     key: 'RFD',
-    name: '右脚脚面',
+    name: '脚部：右脚脚面',
     image_mask: new URL('@/assets/zksstatic/zks_RFD.png', import.meta.url).href,
     phone_mask: new URL('@/assets/zksstatic/zks_RFD_mobile.png', import.meta.url).href,
     is_zhuan: {
@@ -234,7 +245,7 @@ const photoList = ref([
   {
     id: 8,
     key: 'RFP',
-    name: '右脚脚掌',
+    name: '脚部：右脚脚掌',
     image_mask: new URL('@/assets/zksstatic/zks_RFP.png', import.meta.url).href,
     phone_mask: new URL('@/assets/zksstatic/zks_RFP_mobile.png', import.meta.url).href,
     is_zhuan: {
@@ -246,7 +257,8 @@ const photoList = ref([
 
 // 用户信息
 const UserInfo = ref({
-  name: '默认用户',
+  uid: '3',
+  name: '公司/培训班用户',
   age: '',
   sex: '',
   LFD: '',
@@ -259,7 +271,7 @@ const UserInfo = ref({
   RFP: '',
   RFLS: 'exit',
   RFRS: 'exit',
-  RFH: 'exit',
+  RFH: '',
   RF_TWS: 'exit',
   is_abnormal: '',
   extraPhotos1: '',
@@ -628,10 +640,7 @@ const takeExtraPhoto = async () => {
   }
 }
 // 处理年龄范围选择变化
-const handleAgeRangeChange = (value) => {
-  // console.log('选择的年龄范围：', value)
-  // console.log('选择的年龄范围：', UserInfo.value)
-}
+const handleAgeRangeChange = (value) => {}
 /**
  * 表单验证 - 现在在提交前验证
  */
@@ -776,7 +785,7 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 20px;
+  padding: 20px 0px;
 }
 
 .camera-container {

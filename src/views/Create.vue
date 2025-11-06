@@ -1,4 +1,4 @@
-<!-- create.vue -->
+<!-- Create.vue -->
 <template>
   <div class="create-container">
     <div class="header">
@@ -163,7 +163,7 @@ const fallbackCopy = (text) => {
     } else {
       throw new Error('复制命令执行失败')
     }
-  } catch (err) {
+  } catch {
     ElMessage.error('复制失败，请手动选择文本后按Ctrl+C复制')
     // 自动选中文本方便用户手动复制
     textarea.focus()

@@ -73,9 +73,19 @@ const routes = [
     },
   },
   {
-    path: '/zks/photograph',
-    name: 'photograph',
-    component: () => import('@/views/zks/photograph.vue'),
+    path: '/zks/company', //  company
+    name: 'company',
+    component: () => import('@/views/zks/tongue.vue'),
+    props: true,
+    meta: {
+      title: '足康树 - 照片拍摄', // 这里是你需要的特定标题
+      favicon: '/zks-camera.ico', // 拍摄页面专属图标
+    },
+  },
+  {
+    path: '/zks/report', //  company
+    name: 'report',
+    component: () => import('@/views/zks/Report.vue'),
     props: true,
     meta: {
       title: '足康树 - 照片拍摄', // 这里是你需要的特定标题
