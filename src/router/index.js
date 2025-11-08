@@ -92,6 +92,16 @@ const routes = [
       favicon: '/zks-camera.ico', // 拍摄页面专属图标
     },
   },
+  {
+    path: '/zks/ResultEvaluation',
+    name: 'Evaluation',
+    component: () => import('@/views/zks/ResultEvaluation.vue'),
+    props: true,
+    meta: {
+      title: '足康树 - 健康评估', // 这里是你需要的特定标题
+      favicon: '/zks_camera.ico', // 足康树主页面专属图标
+    },
+  },
 ]
 
 const router = createRouter({

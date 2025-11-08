@@ -1,326 +1,467 @@
 <template>
-  <div class="health-report">
+  <!-- 加载中显示动画 -->
+  <div v-if="isLoading" class="loading-container">
+    <HeartLoading size="40px" color="#e74c3c" text="加载报告中..." />
+  </div>
+
+  <div class="health-report" v-else>
     <!-- 顶部导航 -->
     <header class="report-header">
       <button class="back-btn" @click="backhome()">
         <el-icon><arrow-left /></el-icon>
       </button>
       <h1 class="report-title">报告详情</h1>
-      <button class="share-btn">
+      <button class="share-btn" @click="shareReport()">
         <el-icon><share /></el-icon>
       </button>
     </header>
+    <!-- 使用圆环进度条组件 -->
+    <!-- <div class="diagnosis-right">
+      <CircularProgress :score="score" :colors="progressColors" size="200px" />
+    </div> -->
 
     <!-- 主要内容区 -->
     <main class="report-content">
-      <!-- 诊断结果和基本信息：左右布局，左文字右圆环 -->
-      <section class="diagnosis-section">
-        <div class="diagnosis-row">
-          <div class="diagnosis-left">
-            <div class="diagnosis-result">
-              <h2>诊断结果: <span class="result-text">脚气，甲沟炎</span></h2>
+      <div>
+        <!-- 诊断结果和基本信息：左右布局，左文字右圆环 -->
+        <section class="diagnosis-section">
+          <div class="diagnosis-row">
+            <div class="diagnosis-left">
+              <div class="diagnosis-result">
+                <h2>
+                  诊断结果:
+                  <span class="result-text">
+                    {{ apiData.overall_result.diagnosis.join('，') }}
+                  </span>
+                </h2>
+              </div>
+              <div class="basic-info">
+                <div class="info-item">
+                  <span class="info-label">年龄:</span>
+                  <span class="info-value">{{ apiData.age }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">性别:</span>
+                  <span class="info-value">{{ apiData.gender }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">风险指数:</span>
+                  <span class="info-value risk-level-7">
+                    {{ apiData.health_analysis.risks.risk_index }}
+                  </span>
+                </div>
+                <div class="info-item">
+                  <!-- <span class="info-label" style="font-size: 10px">诊断时间:</span> -->
+                  <span class="info-value" style="font-size: 13px">2025-07-21 16:60:16</span>
+                </div>
+              </div>
             </div>
-            <div class="basic-info">
-              <div class="info-item">
-                <span class="info-label">年龄:</span>
-                <span class="info-value">30-40</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">性别:</span>
-                <span class="info-value">男</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">风险指数:</span>
-                <span class="info-value risk-level-7">7</span>
-              </div>
-              <div class="info-item">
-                <!-- <span class="info-label" style="font-size: 10px">诊断时间:</span> -->
-                <span class="info-value" style="font-size: 13px">2025-07-21 16:60:16</span>
-              </div>
-            </div>
-          </div>
 
-          <div class="diagnosis-right">
-            <!-- 健康评分圆环区域 -->
-            <div class="health-score">
-              <div class="outer-circle"></div>
-              <div class="score-circle semi-circle">
-                <!-- 关键修改1：删除原进度条渐变配置，进度条颜色绑定计算属性scoreColor -->
-                <svg class="score-ring" width="200px" height="200px" viewBox="0 0 200 200">
-                  <!-- 底层灰色半圆（不变） -->
-                  <circle
-                    cx="100"
-                    cy="100"
-                    r="85"
-                    fill="none"
-                    stroke="rgba(0, 0, 0, 0.1)"
-                    stroke-width="10"
-                    stroke-dasharray="565.48"
-                    stroke-dashoffset="0"
-                    stroke-linecap="round"
-                    transform="rotate(0 100 100)"
-                  />
-                  <!-- 进度条圆环：stroke绑定scoreColor（动态颜色） -->
-                  <circle
-                    cx="100"
-                    cy="100"
-                    r="85"
-                    fill="none"
-                    :stroke="scoreColor"
-                    stroke-width="10"
-                    :stroke-dasharray="565.48"
-                    :stroke-dashoffset="dashOffset"
-                    stroke-linecap="round"
-                    transform="rotate(-90 100 100)"
-                    class="progress-circle"
-                  />
-                </svg>
+            <div class="diagnosis-right">
+              <!-- 健康评分圆环区域 -->
+              <div class="health-score">
+                <div class="outer-circle"></div>
 
-                <!-- 分数显示：关键修改2：分数值绑定data中的score（原固定75） -->
-                <div class="score-text">
-                  <div class="score-bg"></div>
-                  <div class="score-value">{{ score }}</div>
-                  <!-- 动态显示分数 -->
-                  <div class="score-status">亚健康</div>
+                <div class="diagnosis-right">
+                  <CircularProgress :score="apiData.overall_result.health_score" size="180px" />
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <!-- 健康分析（无修改） -->
-      <section class="analysis-section">
-        <h2 class="section-title">健康分析</h2>
-        <div class="analysis-tabs">
-          <button class="tab-btn active">病原原因</button>
-          <button class="tab-btn">具体症状</button>
-          <button class="tab-btn">并发症风险</button>
-          <button class="tab-btn">日常影响程度</button>
-        </div>
-        <div class="analysis-content">
+        <!-- 2. 健康分析（标签切换交互+动态渲染） -->
+        <section class="analysis-section">
+          <h2 class="section-title">健康分析</h2>
+          <div class="analysis-tabs">
+            <button
+              class="tab-btn"
+              :class="{ active: healthAnalysisTab === 'cause' }"
+              @click="healthAnalysisTab = 'cause'"
+            >
+              病症原因
+            </button>
+            <button
+              class="tab-btn"
+              :class="{ active: healthAnalysisTab === 'symptoms' }"
+              @click="healthAnalysisTab = 'symptoms'"
+            >
+              具体症状
+            </button>
+            <button
+              class="tab-btn"
+              :class="{ active: healthAnalysisTab === 'risks' }"
+              @click="healthAnalysisTab = 'risks'"
+            >
+              并发症风险
+            </button>
+            <button
+              class="tab-btn"
+              :class="{ active: healthAnalysisTab === 'dailyImpact' }"
+              @click="healthAnalysisTab = 'dailyImpact'"
+            >
+              日常影响程度
+            </button>
+          </div>
+
+          <!-- 动态切换内容 -->
+          <div class="analysis-content">
+            <!-- 病原原因 -->
+            <div v-if="healthAnalysisTab === 'cause'">
+              <p>{{ apiData.overall_result.cause }}</p>
+            </div>
+            <!-- 具体症状（循环渲染） -->
+            <div v-else-if="healthAnalysisTab === 'symptoms'">
+              <ul class="symptoms-list">
+                <li v-for="(symptom, idx) in apiData.health_analysis.symptoms" :key="idx">
+                  {{ symptom }}
+                </li>
+              </ul>
+            </div>
+            <!-- 并发症风险 -->
+            <div v-else-if="healthAnalysisTab === 'risks'">
+              <p>{{ apiData.health_analysis.risks.complication_risk }}</p>
+            </div>
+            <!-- 日常影响程度 -->
+            <div v-else-if="healthAnalysisTab === 'dailyImpact'">
+              <p>{{ apiData.health_analysis.risks.daily_impact }}</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. 个性化调理建议（标签切换+动态渲染） -->
+        <section class="suggestion-section">
+          <h2 class="section-title">个性化调理建议</h2>
+          <div class="suggestion-tabs">
+            <button
+              class="tab-btn"
+              :class="{ active: suggestionTab === 'products' }"
+              @click="suggestionTab = 'products'"
+            >
+              产品推荐
+            </button>
+            <button
+              class="tab-btn"
+              :class="{ active: suggestionTab === 'projects' }"
+              @click="suggestionTab = 'projects'"
+            >
+              项目推荐
+            </button>
+            <button
+              class="tab-btn"
+              :class="{ active: suggestionTab === 'diet' }"
+              @click="suggestionTab = 'diet'"
+            >
+              饮食调理
+            </button>
+            <button
+              class="tab-btn"
+              :class="{ active: suggestionTab === 'acupoints' }"
+              @click="suggestionTab = 'acupoints'"
+            >
+              穴位保健
+            </button>
+            <button
+              class="tab-btn"
+              :class="{ active: suggestionTab === 'DailyCare' }"
+              @click="suggestionTab = 'DailyCare'"
+            >
+              日常护理
+            </button>
+          </div>
+
+          <!-- 动态切换内容 -->
+          <div class="suggestion-content">
+            <!-- 产品推荐（循环渲染+展开详情交互） -->
+            <div v-if="suggestionTab === 'products'" class="products-container">
+              <div
+                class="product-card"
+                v-for="(product, idx) in apiData.recommendations.products"
+                :key="idx"
+              >
+                <div class="product-img">
+                  <!-- 图片占位符兜底 -->
+                  <img
+                    :src="product.image_url || defaultProductImg"
+                    :alt="product.name"
+                    @error="handleImgError($event)"
+                  />
+                </div>
+                <div class="product-info">
+                  <h3 class="product-name">{{ product.name }}</h3>
+                  <!-- <div class="product-price">{{ product.price }}</div> -->
+                  <div class="project-price">
+                    {{ product.price }}
+                    <span style="color: rgb(135 135 135); font-weight: 500">{{
+                      product.Specification
+                    }}</span>
+                  </div>
+                  <div class="product-desc">
+                    <p><strong>功效:</strong> {{ product.efficacy }}</p>
+                    <!-- 展开/收起详情 -->
+                    <div class="product-detail">
+                      <p><strong>使用周期:</strong> {{ product.use_cycle }}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 项目推荐（循环渲染+展开详情） -->
+            <div v-else-if="suggestionTab === 'projects'" class="products-container">
+              <div
+                class="product-card"
+                v-for="(project, idx) in apiData.recommendations.projects"
+                :key="idx"
+                @click="toggleProjectExpand(idx)"
+              >
+                <div class="product-img">
+                  <img
+                    :src="project.image_url || defaultProjectImg"
+                    :alt="project.name"
+                    @error="handleImgError($event)"
+                  />
+                </div>
+                <div class="product-info">
+                  <h3 class="product-name">{{ project.name }}</h3>
+                  <div class="product-meta">
+                    <span class="project-price">
+                      {{ project.price }}
+                      <span style="color: rgb(135 135 135); font-weight: 500">{{
+                        project.service_time
+                      }}</span>
+                    </span>
+                  </div>
+                  <div class="product-desc">
+                    <p><strong>功效:</strong> {{ project.efficacy }}</p>
+                    <div class="product-detail">
+                      <p><strong>建议周期:</strong> {{ project.suggest_cycle }}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 饮食调理 -->
+            <div v-else-if="suggestionTab === 'diet'" class="diet-content">
+              <div class="diet-card">
+                <h3 class="diet-title">推荐食材</h3>
+                <p class="diet-food">{{ apiData.recommendations.diet.recommended_food }}</p>
+                <h3 class="diet-title">调理功效</h3>
+                <p class="diet-efficacy">{{ apiData.recommendations.diet.efficacy }}</p>
+              </div>
+            </div>
+
+            <!-- 穴位保健（循环渲染） -->
+            <div v-else-if="suggestionTab === 'acupoints'" class="acupoints-container">
+              <div
+                class="acupoint-card"
+                v-for="(point, idx) in apiData.recommendations.acupoints"
+                :key="idx"
+              >
+                <h3 class="acupoint-name">{{ idx + 1 + '. ' + point.acupoint_name }}</h3>
+                <p class="acupoint-position"><strong>位置:</strong> {{ point.position }}</p>
+                <p class="acupoint-method"><strong>保健方法:</strong> {{ point.health_method }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 日常护理建议（补充动态渲染） -->
+          <div class="daily-care-section" v-if="suggestionTab === 'DailyCare'">
+            <h3 class="daily-care-title">日常护理注意事项</h3>
+            <ul class="daily-care-list">
+              <li v-for="(item, idx) in apiData.recommendations.daily_care" :key="idx">
+                {{ item }}
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- 4. 病症发展解读（动态渲染） -->
+        <section class="development-section">
+          <h2 class="section-title">脚疾隐患解读</h2>
+          <div class="development-content-wrapper">
+            <div class="development-content">
+              <div class="development-item">
+                <h3 class="development-title">发展程度:</h3>
+                <p>{{ apiData.disease_detail.severity_level }}</p>
+              </div>
+              <div class="development-item">
+                <h3 class="development-title">发展阶段:</h3>
+                <p>{{ apiData.disease_detail.disease_stage }}</p>
+              </div>
+              <div class="development-item">
+                <h3 class="development-title">影响范围:</h3>
+                <p>{{ apiData.disease_detail.affected_range }}</p>
+              </div>
+            </div>
+            <!-- 足部图解（保留默认图，可替换为API图片） -->
+            <div class="foot-illustration">
+              <img src="@/assets/zksstatic/foot.png" alt="足部病症位置图解" />
+            </div>
+          </div>
+        </section>
+
+        <!-- 5. 底部提示（动态渲染） -->
+        <div class="bottom-note">
           <p>
-            足部长期处于潮湿环境，真菌大量滋生引发脚气；指甲修剪过短，导致甲沟受损，细菌侵入后引发甲沟炎。
+            {{ apiData.final_diagnosis }}
           </p>
         </div>
-      </section>
-
-      <!-- 个性化调理建议（无修改） -->
-      <section class="suggestion-section">
-        <h2 class="section-title">个性化调理建议</h2>
-        <div class="suggestion-tabs">
-          <button class="tab-btn active">产品推荐</button>
-          <button class="tab-btn">项目推荐</button>
-          <button class="tab-btn">饮食调理</button>
-          <button class="tab-btn">穴位保健</button>
-        </div>
-        <div class="products-container">
-          <div class="product-card">
-            <div class="product-img">
-              <img
-                src="https://p3-flow-imagex-download-sign.byteimg.com/tos-cn-i-a9rns2rl98/5fcf0982ba0c47c1b2ce46e73b0aae5e.png~tplv-a9rns2rl98-resize-jpeg-v1.png?rcl=20251104174748253A47700E396000E5E6&rk3s=8e244e95&rrcfp=8a172a1a&x-expires=1762854469&x-signature=r2E0oYwXJk8GHWeEnesLvbaiHiI%3D"
-                alt="抗菌真菌护理液"
-              />
-            </div>
-            <div class="product-info">
-              <h3 class="product-name">抗菌真菌护理液</h3>
-              <div class="product-price">¥68/瓶 (30ml)</div>
-              <div class="product-desc">
-                <p><strong>功效:</strong> 快速抑制足部真菌，缓解脱皮、瘙痒、异味</p>
-                <p>
-                  <strong>使用方法:</strong> 每日1-2次，连续使用2周为一周期，症状消失后再巩固1周
-                </p>
-              </div>
-            </div>
-          </div>
-          <div class="product-card">
-            <div class="product-img">
-              <img
-                src="https://p11-flow-imagex-download-sign.byteimg.com/tos-cn-i-a9rns2rl98/6ae8322679354804b9222fc66b8f7f27.png~tplv-a9rns2rl98-24:720:720.png?rcl=20251104174748253A47700E396000E5E6&rk3s=8e244e95&rrcfp=8a172a1a&x-expires=1762854468&x-signature=oupJE1Q6lIwZSfXkvcfn15yZE7Q%3D"
-                alt="甲沟消炎软膏"
-              />
-            </div>
-            <div class="product-info">
-              <h3 class="product-name">甲沟消炎软膏</h3>
-              <div class="product-price">¥45/支 (20g)</div>
-              <div class="product-desc">
-                <p><strong>功效:</strong> 减轻甲沟红肿、疼痛，预防感染加重</p>
-                <p><strong>使用方法:</strong> 每日2次涂抹于甲沟部位，连续使用1-2周</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- 病症发展解读（无修改） -->
-      <section class="development-section">
-        <h2 class="section-title">病症发展解读</h2>
-        <div class="development-content">
-          <div class="development-item">
-            <h3 class="development-title">发展程度: 脚气（轻度）、甲沟炎（轻度）。</h3>
-          </div>
-          <div class="development-item">
-            <h3 class="development-title">发展阶段:</h3>
-            <p>脚气处于早期（仅脱皮，无皮肤糜烂）；甲沟炎处于早期（仅红肿，无流脓）。</p>
-          </div>
-          <div class="development-item">
-            <h3 class="development-title">影响范围:</h3>
-            <p>脚气累及足底部半段及1-3趾间皮肤；甲沟炎累及大脚趾甲沟部位。</p>
-          </div>
-          <div class="foot-illustration">
-            <img src="https://picsum.photos/id/237/300/200" alt="足部图解" />
-          </div>
-        </div>
-      </section>
-
-      <!-- 底部提示（无修改） -->
-      <div class="bottom-note">
-        <p>
-          初步判断为轻度脚气合并早期甲沟炎，建议以上述产品与项目方案调理2周。若调理期间脱皮加重、甲沟流脓或疼痛加剧，需及时前往医院皮肤科或外科就诊。
-        </p>
       </div>
     </main>
   </div>
 </template>
 
-<script>
-export default {
-  name: 'HealthReportDetail',
-  data() {
-    return {
-      // 原有分数属性（用于进度条动画）
-      score: 75,
-      // 新增：从 JSON 提取的 data 数据，结构完全一致
-      apiData: {
-        overall_result: {
-          health_score: '75（亚健康）',
-          diagnosis: ['脚气', '轻度甲沟炎'],
-          cause:
-            '足部长期处于潮湿环境，真菌大量滋生引发脚气；指甲修剪过短，导致甲沟受损，细菌侵入后引发甲沟炎',
-        },
-        health_analysis: {
-          symptoms: [
-            '足底及趾间脱皮，伴随明显瘙痒',
-            '大脚趾甲沟轻微红肿，按压时疼痛感明显',
-            '长时间行走后足部酸胀不适',
-            '趾间偶有异味散发',
-          ],
-          risks: {
-            risk_index: '7（中度风险）',
-            complication_risk:
-              '轻度风险，脚气若未及时控制可能发展为足癣，甲沟炎可能加重为化脓性感染',
-            daily_impact: '轻微影响，日常短时间行走无明显障碍，长时间运动后不适感加剧',
-          },
-        },
-        disease_detail: {
-          disease_stage: '脚气处于早期（仅脱皮，无皮肤糜烂）；甲沟炎处于早期（仅红肿，无流脓）',
-          affected_range: '脚气累及足底前半段及1-3趾间皮肤；甲沟炎累及大脚趾甲沟部位',
-          severity_level: '脚气（轻度）、甲沟炎（轻度）',
-        },
-        recommendations: {
-          products: [
-            {
-              name: '抗真菌护理液（XX品牌）',
-              image_url: '图片地址', // 保留原占位符，可后续替换为实际链接
-              price: '68元/瓶（30ml）',
-              efficacy: '快速抑制足部真菌，缓解脱皮、瘙痒、异味',
-              use_cycle: '每日1-2次，连续使用2周为一周期，症状消失后再巩固1周',
-            },
-            {
-              name: '甲沟消炎软膏（XX品牌）',
-              image_url: '图片地址', // 保留原占位符
-              price: '45元/支（20g）',
-              efficacy: '减轻甲沟红肿、疼痛，预防感染加重',
-              use_cycle: '每日2次涂抹于甲沟部位，连续使用1-2周',
-            },
-          ],
-          projects: [
-            {
-              name: '足部抗菌舒缓理疗',
-              image_url: '图片地址', // 保留原占位符
-              service_time: '45分钟/次',
-              price: '128元/次',
-              efficacy: '深层清洁足部，抑制真菌滋生，缓解足部疲劳与瘙痒',
-              suggest_cycle: '每周1次，连续4周为一疗程',
-            },
-            {
-              name: '甲沟专项护理',
-              image_url: '图片地址', // 保留原占位符
-              service_time: '30分钟/次',
-              price: '98元/次',
-              efficacy: '清洁甲沟污垢，减轻红肿炎症，修复受损甲沟组织',
-              suggest_cycle: '每10天1次，连续3次为一疗程',
-            },
-          ],
-          diet: {
-            recommended_food: '薏米、赤小豆、金银花、蒲公英',
-            efficacy: '帮助健脾祛湿、抗菌消炎，辅助改善足部炎症问题',
-          },
-          acupoints: [
-            {
-              acupoint_name: '足三里',
-              position: '膝盖外侧下方凹陷处',
-              health_method: '每日按压1-2分钟',
-            },
-            {
-              acupoint_name: '太冲',
-              position: '足背第一、二跖骨间凹陷处',
-              health_method: '每日按压1-2分钟',
-            },
-            {
-              acupoint_name: '涌泉',
-              position: '足底前1/3凹陷处',
-              health_method: '每日按压1-2分钟',
-            },
-          ],
-          daily_care: [
-            '清洁要求：每日用温水洗脚，擦干后重点擦干趾间水分',
-            '鞋袜选择：穿透气棉质袜子，每日更换，鞋子每周暴晒消毒1次',
-            '指甲修剪：剪指甲避免过短，防止损伤甲沟',
-            '日常注意：瘙痒时勿抓挠，避免皮肤破损加重感染',
-          ],
-        },
+<script setup>
+// 导入依赖
+import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import CircularProgress from '@/components/common/CircularProgress.vue'
+import zksAPI from '@/api/zks.js'
+import HeartLoading from '@/components/common/vue/HeartLoading.vue'
+
+// 路由实例
+const router = useRouter()
+
+// 1. 标签切换状态（ref 声明简单响应式数据）
+const healthAnalysisTab = ref('cause') // 健康分析默认选中「病原原因」
+const suggestionTab = ref('products') // 调理建议默认选中「产品推荐」
+
+// 2. 展开/收起状态（reactive 声明复杂响应式对象）
+const productExpanded = reactive({}) // {0: true, 1: false} 格式
+const projectExpanded = reactive({})
+
+// 3. 默认图片（普通常量，无需响应式）
+const defaultProductImg = 'https://picsum.photos/id/96/90/90' // 产品默认图
+const defaultProjectImg = 'https://picsum.photos/id/251/90/90' // 项目默认图
+
+// 4. 接口数据（reactive 声明复杂响应式对象）
+const apiData = reactive({
+  age: '',
+  gender: '',
+  add_time: '',
+  final_diagnosis: '',
+  overall_result: {
+    health_score: 0,
+    health_status: '',
+    diagnosis: [],
+    cause: '',
+  },
+  health_analysis: {
+    symptoms: [],
+    risks: {
+      risk_index: '',
+      complication_risk: '',
+      daily_impact: '',
+    },
+  },
+  disease_detail: {
+    disease_stage: '',
+    affected_range: '',
+    severity_level: '',
+  },
+  recommendations: {
+    products: [
+      {
+        name: '',
+        image_url: '',
+        price: '',
+        Specification: '',
+        efficacy: '',
+        use_cycle: '',
       },
-    }
+      {
+        name: '',
+        image_url: '',
+        price: '',
+        Specification: '',
+        efficacy: '',
+        use_cycle: '',
+      },
+    ],
+    projects: [],
+    diet: {
+      recommended_food: '',
+      efficacy: '',
+    },
+    acupoints: [],
+    daily_care: [],
   },
-  computed: {
-    dashArray() {
-      // 全圆周长（不变）
-      return 2 * Math.PI * 90
-    },
-    dashOffset() {
-      // 进度偏移量计算（不变）
-      return this.dashArray * (1 - this.score / 100)
-    },
-    // 关键修改3：新增计算属性，按分数区间返回单一颜色
-    scoreColor() {
-      if (this.score < 30) {
-        return '#FF4A4A' // <30%：红色
-      } else if (this.score >= 30 && this.score < 60) {
-        return '#FCCE36' // 30%-60%：橙色
-      } else {
-        return '#6AFF41' // 60%-100%：绿色
-      }
-    },
-  },
-  methods: {
-    backhome() {
-      this.$router.push('/zks')
-    },
-  },
+})
+const isLoading = ref(true)
+// 生命周期：组件挂载后执行
+onMounted(() => {
+  console.log('apiData初始值', apiData)
+  const id = 5
+  console.log('请求的报告ID', id)
+
+  // 记录开始时间
+  const startTime = Date.now()
+
+  // 调用接口获取报告详情（Vue3 直接使用导入的 API 模块，无 this）
+  zksAPI
+    .getReportDetail(id)
+    .then((response) => {
+      // 计算已用时间
+      const elapsed = Date.now() - startTime
+      // 确保至少3秒加载时间
+      const minLoadingTime = 1500
+      const remainingTime = Math.max(0, minLoadingTime - elapsed)
+
+      // 延迟更新数据和隐藏加载动画
+      setTimeout(() => {
+        // 响应式对象直接赋值更新
+        Object.assign(apiData, response.data)
+        console.log('接口返回的apiData', apiData)
+        isLoading.value = false // 加载完成，隐藏动画
+      }, remainingTime)
+    })
+    .catch((err) => {
+      console.error('获取报告失败:', err)
+      // 即使出错也要确保最少显示3秒加载动画
+      const elapsed = Date.now() - startTime
+      const minLoadingTime = 3000
+      const remainingTime = Math.max(0, minLoadingTime - elapsed)
+
+      setTimeout(() => {
+        ElMessage.error('加载报告失败，请稍后重试')
+        isLoading.value = false // 失败也隐藏动画
+      }, remainingTime)
+    })
+})
+
+// 页面方法（直接声明函数，无需放在 methods 中）
+const backhome = () => {
+  router.push('/zks') // Vue3 用 useRouter 获取的路由实例跳转
+}
+const shareReport = () => {
+  ElMessage.info('分享功能正在开发中，敬请期待！')
+  // router.push('/zks?share=true')
+}
+
+const handleImgError = (event, type = 'product') => {
+  // 根据类型设置默认图，避免歧义
+  event.target.src = type === 'product' ? defaultProductImg : defaultProjectImg
 }
 </script>
-
 <style lang="scss" scoped>
 body {
-  margin: 0;
+  margin: 0px;
+}
+/* 加载动画容器：全屏居中 */
+.loading-container {
+  min-height: calc(100vh - 100px); /* 适配页面高度 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 /* 样式部分无任何修改，完全保留原逻辑 */
 .health-report {
   min-height: 100vh;
   background-color: #f4f6fb;
   font-family: 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
-  background: linear-gradient(180deg, #f0f2fd 0%, #ffffff 100%);
+  background: linear-gradient(180deg, #f0f2fd 0%, #eaedf5 100%);
 }
 
 .report-header {
@@ -367,7 +508,7 @@ body {
 }
 
 .diagnosis-section {
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 14px;
   margin-bottom: 18px;
   // box-shadow: 0 6px 18px rgba(10, 22, 50, 0.06);
@@ -393,11 +534,12 @@ body {
   .diagnosis-row {
     display: flex;
     gap: 12px;
+    flex-direction: row;
     align-items: center;
     justify-content: space-between;
 
     .diagnosis-left {
-      flex: 1 1 40%;
+      flex: 1 0 45%;
 
       .basic-info {
         display: flex;
@@ -444,8 +586,8 @@ body {
           padding-top: 100%;
           border-radius: 50%;
           background-color: #fff;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-          z-index: 1;
+          // box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+          z-index: 0;
         }
 
         .score-circle.semi-circle {
@@ -540,21 +682,29 @@ body {
 }
 
 .analysis-section {
-  background-color: #f0fff4;
+  background-color: #ffffff;
   border-radius: 12px;
   padding: 14px;
   margin-bottom: 16px;
-  box-shadow: 0 4px 10px rgba(20, 40, 10, 0.03);
+  // box-shadow: 0 4px 10px rgba(98, 102, 97, 0.62);
 
   .analysis-tabs {
     display: flex;
     gap: 8px;
-    margin-bottom: 12px;
+    margin-bottom: 4px;
     overflow-x: auto;
     padding-bottom: 4px;
+    border-bottom: 1px solid #eee;
+
+    // 隐藏 WebKit 滚动条
+    ::-webkit-scrollbar {
+      display: none;
+      width: 0;
+      height: 0;
+    }
 
     .tab-btn {
-      padding: 8px 16px;
+      padding: 8px 8px;
       background: none;
       border: none;
       font-size: 14px;
@@ -565,9 +715,9 @@ body {
       transition: color 0.3s ease;
 
       &.active {
-        color: #27ae60;
+        color: #057e0f;
         font-weight: 700;
-        background: rgba(39, 174, 96, 0.12);
+        background: rgb(188 255 216 / 71%);
         border-radius: 18px;
         padding: 6px 12px;
       }
@@ -577,7 +727,7 @@ body {
       }
 
       &:hover {
-        color: #3498db;
+        color: #057e0f;
       }
     }
   }
@@ -595,7 +745,7 @@ body {
   border-radius: 12px;
   padding: 14px;
   margin-bottom: 16px;
-  box-shadow: 0 4px 10px rgba(80, 0, 80, 0.03);
+  // box-shadow: 0 4px 10px rgba(98, 102, 97, 0.62);
 
   .suggestion-tabs {
     display: flex;
@@ -603,9 +753,13 @@ body {
     margin-bottom: 16px;
     overflow-x: auto;
     padding-bottom: 4px;
+    // 不显示进度杆
+    ::-webkit-scrollbar {
+      display: none;
+    }
 
     .tab-btn {
-      padding: 8px 16px;
+      padding: 8px 8px;
       background: none;
       border: none;
       font-size: 14px;
@@ -644,6 +798,7 @@ body {
     gap: 12px;
     padding: 12px;
     border-radius: 10px;
+    flex-direction: row;
     background: linear-gradient(90deg, #f3fbff 0%, #f7fdff 100%);
     transition:
       transform 0.2s ease,
@@ -664,6 +819,8 @@ body {
       img {
         width: 100%;
         height: 100%;
+        max-width: 300px;
+        max-height: 300px;
         object-fit: contain;
         background: #fff;
         padding: 6px;
@@ -678,6 +835,10 @@ body {
         font-weight: 700;
         margin: 0 0 6px 0;
         color: #2c3e50;
+        // 字体放在左边
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
       }
 
       .product-price {
@@ -685,6 +846,14 @@ body {
         font-weight: 800;
         margin-bottom: 8px;
         font-size: 15px;
+      }
+      .project-price {
+        color: #e74c3c;
+        font-weight: 800;
+        font-size: 15px;
+        display: flex;
+        justify-content: space-between;
+        padding-right: 10px;
       }
 
       .product-desc {
@@ -709,9 +878,17 @@ body {
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 20px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  // box-shadow: 0 4px 10px rgba(98, 102, 97, 0.62);
+  .development-content-wrapper {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+  }
 
   .development-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1 0 60%;
     .development-item {
       margin-bottom: 16px;
 
@@ -729,19 +906,23 @@ body {
         margin: 0;
       }
     }
+  }
+  .foot-illustration {
+    display: flex;
+    justify-content: flex-start;
+    margin-top: 16px;
+    flex: 1 1 40%;
+    align-self: flex-start;
+    transform: translateY(-50px);
 
-    .foot-illustration {
-      display: flex;
-      justify-content: center;
-      margin-top: 16px;
-
-      img {
-        max-width: 100%;
-        height: auto;
-        border-radius: 8px;
-        max-height: 200px;
-        object-fit: contain;
-      }
+    img {
+      width: 100%;
+      height: auto;
+      max-width: 300px;
+      max-height: 300px;
+      border-radius: 8px;
+      // max-height: 400px;
+      object-fit: contain;
     }
   }
 }
@@ -763,9 +944,9 @@ body {
   }
 
   .product-card {
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
+    flex-direction: row;
+    align-items: flex-start;
+    text-align: flex-start;
   }
 
   .basic-info {

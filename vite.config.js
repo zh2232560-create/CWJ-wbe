@@ -9,11 +9,9 @@ import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 export default defineConfig(({ mode }) => {
   // 加载环境变量
   const env = loadEnv(mode, process.cwd(), '')
-  
+
   // 根据环境决定API基础URL
-  const apiBaseUrl = mode === 'development' 
-    ? 'https://www.bz.crmeb.com' 
-    : 'https://www.pkahealth.com'
+  const apiBaseUrl = mode === 'development' ? 'http:///crmebapi.com' : 'https://www.pkahealth.com'
 
   return {
     base: '/meeting/',

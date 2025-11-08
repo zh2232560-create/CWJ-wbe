@@ -184,6 +184,7 @@ import { Camera, VideoCamera, Check, Refresh, SuccessFilled, User } from '@eleme
 import zksAPI from '@/api/zks'
 import { setCache } from '@/utils/cache'
 import LoadingMask from '@/components/common/loading.vue'
+import router from '@/router'
 
 // 模拟上传函数
 const mockUploadPhoto = async (file, photoName) => {
@@ -686,15 +687,15 @@ const handleSubmit = async () => {
 
     const add_id = await zksAPI.addUserInfo(UserInfo.value)
     if (add_id.status == 200) {
+      console.log('add_id', add_id)
       setTimeout(() => {
         showCompletionDialog.value = false
         isSubmitting.value = false
-        console.log('add_id', add_id)
-        ElMessage.success('提交成功！一秒后自动刷新页面')
-        setTimeout(() => {
-          location.reload()
-        }, 1000)
-      }, 1500)
+        ElMessage.success('提交成功！')
+        router.push('/zks/ResultEvaluation?id=' + add_id.data.id)
+        // 刷新
+        // location.reload()
+      }, 2000)
     } else {
       throw new Error('提交未返回预期结果,请检查API')
     }

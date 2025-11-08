@@ -18,4 +18,30 @@ export default {
   addUserInfo(data) {
     return request.post('/zks/addUsers', data)
   },
+
+  /**
+   * 获取病症分类
+   */
+  getCategoryList(type) {
+    const data = {
+      type,
+    }
+    return request.get('/zks/disease_classification', { params: data })
+  },
+  /**
+   * 获取初始诊断分类
+   */
+  getDiagnosisCategory(data) {
+    return request.post('/zks/diagnosis_init_result', data)
+  },
+
+  /**
+   * 诊断报告数据
+   */
+  getReportDetail(id) {
+    const data = {
+      id,
+    }
+    return request.get(`/zks/report_detail`, { params: data })
+  },
 }
