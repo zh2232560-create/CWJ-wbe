@@ -31,8 +31,18 @@ export default {
   /**
    * 获取初始诊断分类
    */
-  getDiagnosisCategory(data) {
-    return request.post('/zks/diagnosis_init_result', data)
+  getDiagnosisCategory(data, config = {}) {
+    return request.post('/zks/diagnosis_init_result', data, config)
+  },
+
+  /**
+   * 生成诊断报告
+   * @param {Object} data - 提交的参数
+   * @param {Object} config - axios 配置（可选，用于覆盖全局配置）
+   */
+  generateReport(data, config = {}) {
+    // 把 config 传递给 axios.post，覆盖全局 timeout
+    return request.post('/zks/generateReport', data, config)
   },
 
   /**

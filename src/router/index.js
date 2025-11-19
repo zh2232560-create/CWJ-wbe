@@ -68,7 +68,7 @@ const routes = [
     name: 'zks',
     component: () => import('@/views/zks/index.vue'),
     meta: {
-      title: '足康树采集系统',
+      title: '足康树检测系统',
       favicon: '/zks_camera.ico', // 足康树主页面专属图标
     },
   },
@@ -83,12 +83,12 @@ const routes = [
     },
   },
   {
-    path: '/zks/report', //  company
+    path: '/zks/report/detail', //  company
     name: 'report',
     component: () => import('@/views/zks/Report.vue'),
     props: true,
     meta: {
-      title: '足康树 - 照片拍摄', // 这里是你需要的特定标题
+      title: '足康树 - 报告详情', // 这里是你需要的特定标题
       favicon: '/zks-camera.ico', // 拍摄页面专属图标
     },
   },

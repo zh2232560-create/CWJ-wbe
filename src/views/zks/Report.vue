@@ -1,7 +1,18 @@
 <template>
   <!-- 加载中显示动画 -->
   <div v-if="isLoading" class="loading-container">
-    <HeartLoading size="40px" color="#e74c3c" text="加载报告中..." />
+    <!-- <HeartLoading size="40px" color="#e74c3c" text="加载报告中..." /> -->
+    <CubeLoader
+      text="加载报告中..."
+      textColor="#00ff9d"
+      textSize="16"
+      textGap="30"
+      cubeSize="50"
+      cubeMainColor="#00ff9d"
+      cubeTopColor="#000"
+      faceBrightness="[-20, -10, 10, 0, -20, -10]"
+      rotateDuration="6"
+    />
   </div>
 
   <div class="health-report" v-else>
@@ -18,6 +29,20 @@
     <!-- 使用圆环进度条组件 -->
     <!-- <div class="diagnosis-right">
       <CircularProgress :score="score" :colors="progressColors" size="200px" />
+    </div> -->
+    <!-- 自定义文字和颜色 -->
+    <!-- <div class="loading-container">
+      <CubeLoader
+        text="加载报告中..."
+        textColor="#00ff9d"
+        textSize="16"
+        textGap="30"
+        cubeSize="50"
+        cubeMainColor="#00ff9d"
+        cubeTopColor="#000"
+        faceBrightness="[0, -10, 10, 0, 'ignore', -10]"
+        rotateDuration="6"
+      />
     </div> -->
 
     <!-- 主要内容区 -->
@@ -42,7 +67,7 @@
                 </div>
                 <div class="info-item">
                   <span class="info-label">性别:</span>
-                  <span class="info-value">{{ apiData.gender }}</span>
+                  <span class="info-value">{{ apiData.gender == 1 ? '男' : '女' }}</span>
                 </div>
                 <div class="info-item">
                   <span class="info-label">风险指数:</span>
@@ -52,7 +77,7 @@
                 </div>
                 <div class="info-item">
                   <!-- <span class="info-label" style="font-size: 10px">诊断时间:</span> -->
-                  <span class="info-value" style="font-size: 13px">2025-07-21 16:60:16</span>
+                  <span class="info-value" style="font-size: 13px">{{ apiData.add_time }}</span>
                 </div>
               </div>
             </div>
@@ -154,13 +179,13 @@
             >
               饮食调理
             </button>
-            <button
+            <!-- <button
               class="tab-btn"
               :class="{ active: suggestionTab === 'acupoints' }"
               @click="suggestionTab = 'acupoints'"
             >
               穴位保健
-            </button>
+            </button> -->
             <button
               class="tab-btn"
               :class="{ active: suggestionTab === 'DailyCare' }"
@@ -182,9 +207,9 @@
                 <div class="product-img">
                   <!-- 图片占位符兜底 -->
                   <img
-                    :src="product.image_url || defaultProductImg"
+                    :src="product.image_url"
                     :alt="product.name"
-                    @error="handleImgError($event)"
+                    @error="handleImgError($event, 'product')"
                   />
                 </div>
                 <div class="product-info">
@@ -308,6 +333,11 @@
             {{ apiData.final_diagnosis }}
           </p>
         </div>
+        <div class="disclaimer">
+          <p>
+            感谢使用足康树检测系统，本分析仅为参考，不能替代医生的诊断和治疗建议。祝您早日康复！。
+          </p>
+        </div>
       </div>
     </main>
   </div>
@@ -316,13 +346,15 @@
 <script setup>
 // 导入依赖
 import { ref, reactive, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import CircularProgress from '@/components/common/CircularProgress.vue'
 import zksAPI from '@/api/zks.js'
 import HeartLoading from '@/components/common/vue/HeartLoading.vue'
+import CubeLoader from '@/components/common/vue/CubeLoading.vue'
+import router from '@/router'
 
 // 路由实例
-const router = useRouter()
+const route = useRoute()
 
 // 1. 标签切换状态（ref 声明简单响应式数据）
 const healthAnalysisTab = ref('cause') // 健康分析默认选中「病原原因」
@@ -333,9 +365,8 @@ const productExpanded = reactive({}) // {0: true, 1: false} 格式
 const projectExpanded = reactive({})
 
 // 3. 默认图片（普通常量，无需响应式）
-const defaultProductImg = 'https://picsum.photos/id/96/90/90' // 产品默认图
-const defaultProjectImg = 'https://picsum.photos/id/251/90/90' // 项目默认图
-
+const defaultProductImg = 'http://crmebapi.com//statics/images/zks_default_product.png' // 产品默认图
+const defaultProjectImg = 'http://crmebapi.com//statics/images/zks_default_project.png' // 项目默认图
 // 4. 接口数据（reactive 声明复杂响应式对象）
 const apiData = reactive({
   age: '',
@@ -392,8 +423,9 @@ const apiData = reactive({
 const isLoading = ref(true)
 // 生命周期：组件挂载后执行
 onMounted(() => {
+  // 获取路由参数 id
+  const id = route.query.reportId || '6'
   console.log('apiData初始值', apiData)
-  const id = 5
   console.log('请求的报告ID', id)
 
   // 记录开始时间
@@ -433,16 +465,32 @@ onMounted(() => {
 
 // 页面方法（直接声明函数，无需放在 methods 中）
 const backhome = () => {
-  router.push('/zks') // Vue3 用 useRouter 获取的路由实例跳转
+  router.replace('/zks') // Vue3 用 useRouter 获取的路由实例跳转
 }
 const shareReport = () => {
   ElMessage.info('分享功能正在开发中，敬请期待！')
   // router.push('/zks?share=true')
 }
-
+const image_restart_count = ref(0)
 const handleImgError = (event, type = 'product') => {
-  // 根据类型设置默认图，避免歧义
-  event.target.src = type === 'product' ? defaultProductImg : defaultProjectImg
+  // 最多重试3次
+  if (image_restart_count.value < 3) {
+    // 获取当前图片元素
+    const img = event.target
+    // 初始化重试次数（存放在元素自定义属性中）
+    img.retryCount = img.retryCount || 0
+    image_restart_count.value++
+    // 设置默认图
+    setTimeout(() => {
+      img.src = type === 'product' ? defaultProductImg : defaultProjectImg
+    }, 15000) // 15秒后重试加载图片
+  } else {
+    console.log('图片加载失败，使用默认图')
+    // // 超过3次，使用本地占位图（需提前在assets文件夹放置）
+    // img.src = '@/assets/zksstatic/default-placeholder.png'
+    // 或直接隐藏图片
+    // img.style.display = 'none';
+  }
 }
 </script>
 <style lang="scss" scoped>
@@ -936,6 +984,18 @@ body {
   color: #34495e;
   line-height: 1.6;
   margin-bottom: 30px;
+}
+.disclaimer {
+  padding: 15px;
+  //居中
+  text-align: center;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  font-size: 10px;
+  color: #666;
 }
 
 @media (max-width: 375px) {

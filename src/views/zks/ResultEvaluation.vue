@@ -1,7 +1,11 @@
 <template>
   <!-- 加载中显示动画 -->
-  <div v-if="isLoading" class="loading-container">
-    <HeartLoading size="40px" color="#1ECBE1" text="正在诊断..." />
+  <div v-if="isLoading || isGenerating" class="loading-container">
+    <HeartLoading
+      size="40px"
+      :color="isGenerating ? '#ff0000' : '#1ECBE1'"
+      :text="isGenerating ? '正在生成报告中，请稍后。。。' : '正在诊断...'"
+    />
   </div>
   <div class="disease-classification" v-else>
     <!-- 标题区域 -->
@@ -51,11 +55,12 @@
       </div>
 
       <!-- 生成报告按钮 -->
+      <!-- 生成报告按钮（修改后） -->
       <el-button
         type="primary"
         class="generate-btn"
         @click="generateReport"
-        :disabled="selectedItems.length === 0"
+        :disabled="selectedItems.length === 0 || isGenerating"
       >
         生成报告
       </el-button>
@@ -65,11 +70,13 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { dayOrDaysToDate, ElMessage } from 'element-plus'
 import zksAPI from '@/api/zks.js'
 import HeartLoading from '@/components/common/vue/HeartLoading.vue'
 import { useRoute } from 'vue-router' // 新增：引入路由工具
-
+import router from '@/router'
+// 新增：控制生成报告的加载状态
+const isGenerating = ref(false)
 // 新增：获取路由参数
 const route = useRoute()
 const diagnosisId = ref('')
@@ -77,6 +84,7 @@ const diagnosisId = ref('')
 const classificationList = ref([]) // 所有病症分类列表
 const selectedIds = ref([]) // 选中的ID数组
 const isLoading = ref(true) // 加载状态
+const reportId = ref('') // 报告详情ID
 // 获取正常分类的ID（用于互斥判断）
 const normalId = computed(() => {
   const normalItem = classificationList.value.find((item) => item.name === '正常')
@@ -126,21 +134,52 @@ const handleTagClose = (item) => {
 }
 
 // 生成报告
-const generateReport = () => {
+const generateReport = async () => {
   if (selectedItems.value.length === 0) {
     ElMessage.warning('请至少选择一种病症分类')
     return
   }
 
-  // 实际应用中可调用后端接口生成报告
-  const selectedNames = selectedItems.value.map((item) => item.name).join('、')
-  ElMessage.success(`报告生成成功！包含分类：${selectedNames}`)
+  // 1. 处理提交数据：选中的病症名称数组 → 逗号分隔字符串
+  const manualClassification = selectedItems.value.map((item) => item.name)
 
-  // 打印选中的数据（实际项目中可传递给后端）
-  console.log('生成报告的参数：', {
-    selectedIds: selectedIds.value,
-    selectedItems: selectedItems.value,
-  })
+  // 2. 准备提交参数（仅保留 id 和 manual_classification）
+  const reportParams = {
+    reportId: reportId.value, // 诊断记录ID（从路由获取）
+    manualClassification: manualClassification, // 逗号分隔的病症名称字符串（如："甲沟炎,脚气"）
+  }
+  console.log('准备提交参数：', reportParams)
+
+  try {
+    isGenerating.value = true
+    // 3. 调用后端接口提交数据（超时1分钟）
+    const response = await zksAPI.generateReport(reportParams, {
+      timeout: 60000, // 单独设置1分钟超时
+    })
+
+    if (response.status === 200) {
+      ElMessage.success('报告生成成功！')
+      console.log('报告生成结果：', response.data)
+      // 可根据需要跳转到报告详情页
+      try {
+        await router.replace(`/zks/report/detail?reportId=${response.data.reportId}`)
+      } catch (error) {
+        console.error('跳转到报告详情页失败：', error)
+      }
+    } else {
+      ElMessage.error('报告生成失败，请重试')
+    }
+  } catch (error) {
+    console.error('生成报告接口调用失败：', error)
+    // 区分超时错误和其他错误
+    if (error.code === 'ECONNABORTED') {
+      ElMessage.error('报告生成超时（已超过1分钟），请检查网络或联系管理员')
+    } else {
+      ElMessage.error('网络异常或服务器错误，报告生成失败')
+    }
+  } finally {
+    isGenerating.value = false
+  }
 }
 
 // 获取病症分类列表接口调用
@@ -171,11 +210,25 @@ const fetchInitialDiagnosis = async () => {
   }
 
   try {
+    /**
+     * 获取初始诊断结果函数
+     */
     const startTime = Date.now()
-    // 修改：传递id参数到接口
-    const response = await zksAPI.getDiagnosisCategory({
-      id: diagnosisId.value, // 使用路由传递的id
-    })
+    /**
+     * 获取初始诊断结果函数
+     *
+     * @param {Object} data - 获取初始诊断结果参数
+     * @param {Object} options - 配置选项
+     * @returns {Promise} 获取初始诊断结果结果
+     */
+    const response = await zksAPI.getDiagnosisCategory(
+      {
+        id: diagnosisId.value, // 使用路由传递的id
+      },
+      {
+        timeout: 60000, // 覆盖全局超时设置为60秒
+      },
+    )
     console.log('获取初始诊断结果：', response)
 
     if (
@@ -184,6 +237,8 @@ const fetchInitialDiagnosis = async () => {
       response.data.Classification.length
     ) {
       const initialNames = response.data.Classification
+      reportId.value = response.data.reportId || ''
+      console.log('初始诊断结果id：', reportId.value)
       const matchedIds = classificationList.value
         .filter((item) => initialNames.includes(item.name))
         .map((item) => item.id)
