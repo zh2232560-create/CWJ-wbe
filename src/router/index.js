@@ -60,6 +60,15 @@ const routes = [
       favicon: '/favicon.ico',
     },
   },
+  {
+    path: '/cwj/shipping',
+    name: 'shippingpage',
+    component: () => import('@/views/cwj/shippingpage.vue'),
+    meta: {
+      title: '蔡文姬发货页面',
+      favicon: '/favicon.ico',
+    },
+  },
   /**
    * 足康树文件路由
    */

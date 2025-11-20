@@ -2,13 +2,26 @@
   <div class="simple-photo-capture">
     <!-- 新增：使用加载组件 -->
     <loading-mask :visible="isSubmitting" text="正在提交，请等待..." />
-    <!-- 顶部进度指示 -->
-    <div class="progress-header">
+    <!-- 顶部标题栏 -->
+    <div class="header-section">
+      <h2>足康树检测系统</h2>
+    </div>
+
+    <!-- 部位信息和进度 -->
+    <div class="progress-section">
       <div class="progress-info">
-        <h2>照片拍摄进度</h2>
+        <h3>{{ currentPhotoName }}</h3>
         <p>已完成 {{ completedCount }} / {{ totalPhotos }} 张照片</p>
+        <!-- 进度条 -->
+        <div class="progress-bar-container">
+          <el-progress
+            :percentage="progressPercentage"
+            :color="progressColors"
+            :show-text="false"
+            class="custom-progress-bar"
+          />
+        </div>
       </div>
-      <el-progress :percentage="progressPercentage" :color="progressColors" :show-text="false" />
     </div>
 
     <!-- 主拍摄区域 -->
@@ -18,56 +31,41 @@
         <div class="camera-preview">
           <div v-if="!isCameraActive" class="camera-placeholder">
             <el-icon size="64px" color="#909399"><Camera /></el-icon>
-            <p>点击启动相机开始拍摄</p>
+            <p>请开启摄像头并拍照</p>
           </div>
           <div v-show="isCameraActive" class="camera-active-container">
             <video ref="videoElement" autoplay playsinline class="camera-feed"></video>
             <el-image
               :src="currentMaskImage"
               :style="maskImageStyle"
-              fit="fill"
               alt="蒙版层"
               class="camera-overlay"
-              v-show="isCameraActive && !isTakingExtraPhoto"
+              v-show="isCameraActive && !isTakingExtraPhoto && showMask"
             />
           </div>
 
           <canvas ref="canvasElement" style="display: none"></canvas>
         </div>
+      </div>
+    </div>
 
-        <!-- 当前拍摄信息 -->
-        <div class="capture-info" v-if="!isTakingExtraPhoto">
-          <h3>{{ currentPhotoName }}</h3>
-          <p>第 {{ currentIndex + 1 }} 张 / 共 {{ totalPhotos }} 张</p>
-        </div>
-        <div class="capture-info" v-else>
-          <h3>补充照片</h3>
-        </div>
-
-        <!-- 拍摄按钮 -->
-        <div class="capture-actions">
-          <el-button
-            v-if="!isCameraActive"
-            type="primary"
-            size="large"
-            @click="startCamera"
-            :loading="isLoading"
-          >
-            <el-icon><VideoCamera /></el-icon>
-            启动相机
-          </el-button>
-
-          <el-button
-            v-else
-            type="primary"
-            size="large"
-            @click="capturePhoto"
-            :disabled="isCapturing"
-            :loading="isCapturing"
-          >
-            <el-icon><Camera /></el-icon>
-            {{ isCapturing ? '拍摄中...' : '拍摄照片' }}
-          </el-button>
+    <!-- 底部拍摄按钮 -->
+    <div class="capture-actions">
+      <div class="button-container">
+        <div
+          class="wave-button"
+          @click="handleCameraAction"
+          :class="{ capturing: isCapturing, active: isCameraActive }"
+        >
+          <div class="wave"></div>
+          <div class="wave wave-2"></div>
+          <div class="wave wave-3"></div>
+          <el-icon v-if="!isCameraActive" class="button-icon">
+            <VideoCamera />
+          </el-icon>
+          <el-icon v-else class="button-icon">
+            <Camera />
+          </el-icon>
         </div>
       </div>
     </div>
@@ -292,6 +290,14 @@ const extraPhotosCount = ref(0)
 // 新增：标记是否正在进行额外拍摄
 const isTakingExtraPhoto = ref(false)
 
+const showMask = ref(true)
+
+const toggleMask = () => {
+  if (isCameraActive.value) {
+    showMask.value = !showMask.value
+  }
+}
+
 // 计算属性
 const totalPhotos = computed(() => photoList.value.length)
 const currentPhotoName = computed(() => photoList.value[currentIndex.value]?.name || '')
@@ -345,7 +351,14 @@ const progressColors = ref([
 const handleResize = () => {
   windowWidth.value = window.innerWidth
 }
-// 启动相机
+
+const handleCameraAction = () => {
+  if (!isCameraActive.value) {
+    startCamera()
+  } else {
+    capturePhoto()
+  }
+}
 const startCamera = async () => {
   // 移除年龄和性别的验证，允许直接启动相机
   isLoading.value = true
@@ -420,6 +433,7 @@ const onVideoLoaded = () => {
     // 视频准备就绪，允许拍摄
     isCameraActive.value = true
     isLoading.value = false
+    showMask.value = true // 显示蒙版
     ElMessage.success('相机启动成功，可以开始拍摄')
   }
 }
@@ -752,24 +766,53 @@ onBeforeUnmount(() => {
   background: linear-gradient(135deg, #f5f7fa 0%, #e4e7ed 100%);
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
 }
 
-.progress-header {
-  background: white;
-  padding: 20px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+.header-section {
+  background: #409eff;
+  color: white;
+  padding: 15px 20px;
   text-align: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 10;
 }
 
-.progress-info h2 {
-  margin: 0 0 8px 0;
+.header-section h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.progress-section {
+  background: white;
+  padding: 12px 20px;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  z-index: 10;
+}
+
+.progress-info h3 {
+  margin: 0 0 5px 0;
   color: #303133;
+  font-size: 18px;
 }
 
 .progress-info p {
-  margin: 0;
+  margin: 0 0 10px 0;
   color: #606266;
-  font-size: 16px;
+  font-size: 14px;
+}
+
+.progress-bar-container {
+  width: 100%;
+  padding: 0 10px;
+}
+
+.custom-progress-bar {
+  width: 100%;
 }
 
 .camera-main {
@@ -777,52 +820,61 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 20px;
+  padding: 15px;
+  overflow: hidden;
 }
 
 .camera-container {
   background: white;
-  padding: 30px;
   border-radius: 16px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   text-align: center;
-  max-width: 1200px;
-  max-height: 1200px;
-  height: 80%;
   width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .camera-preview {
-  width: 100%;
-  height: 80%;
+  flex: 1;
   background: #f8f9fa;
-  border: 2px dashed #dcdfe6;
   border-radius: 12px;
   overflow: hidden;
-  margin-bottom: 20px;
   position: relative;
+  min-height: 0;
 }
+
 .camera-placeholder {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   width: 100%;
-  height: 500px;
+  height: 100%;
+}
+
+.camera-placeholder p {
+  margin-top: 15px;
+  color: #909399;
+  font-size: 16px;
 }
 
 .camera-active-container {
   position: relative;
   width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  height: 100%;
+  overflow: hidden;
 }
 
 .camera-feed {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  position: relative;
+  z-index: 1;
 }
+
 .camera-overlay {
   position: absolute;
   top: 0;
@@ -832,31 +884,95 @@ onBeforeUnmount(() => {
   object-fit: contain;
   pointer-events: none;
   z-index: 10;
-}
-
-.capture-info {
-  margin-bottom: 20px;
-}
-
-.capture-info h3 {
-  margin: 0 0 8px 0;
-  color: #303133;
-  font-size: 20px;
-}
-
-.capture-info p {
-  margin: 0;
-  color: #909399;
-  font-size: 16px;
-}
-.photo-direction {
-  padding-left: 10px;
-  font-size: 10px;
-  color: brown;
+  /* opacity: 0.8; */
 }
 
 .capture-actions {
-  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  padding: 25px 15px;
+  background: white;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 20;
+}
+
+.button-container {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.wave-button {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: transparent;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.wave-button::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: #409eff;
+  clip-path: polygon(0 33%, 100% 33%, 100% 100%, 0 100%);
+  z-index: 1;
+}
+
+.wave-button.active::before {
+  background: #67c23a;
+}
+
+.wave-button.capturing::before {
+  background: #e6a23c;
+}
+
+.wave {
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  top: -50%;
+  left: -50%;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 30%;
+  animation: wave 4s linear infinite;
+  z-index: 2;
+}
+
+.wave-2 {
+  animation-delay: 1s;
+  opacity: 0.7;
+}
+
+.wave-3 {
+  animation-delay: 2s;
+  opacity: 0.4;
+}
+
+@keyframes wave {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.wave-button .button-icon {
+  color: white;
+  font-size: 36px;
+  position: relative;
+  z-index: 3;
 }
 
 .preview-dialog {
@@ -953,29 +1069,20 @@ onBeforeUnmount(() => {
 /* 响应式设计 */
 @media (max-width: 768px) {
   .camera-main {
-    align-items: start;
+    align-items: stretch;
+    padding: 5px;
   }
 
   .capture-actions {
-    bottom: 0px;
-    position: fixed;
-    left: 0;
-    right: 0;
-    display: flex;
-    justify-content: center;
-    padding: 0 20px;
-    z-index: 100;
-    margin-top: 0;
-    background-color: #fff;
-    height: 80px;
+    padding: 20px 10px;
   }
 
   .camera-container {
-    padding-bottom: 80px;
-    margin: 10px;
+    border-radius: 0;
   }
+
   .camera-active-container {
-    height: 500px;
+    height: 100%;
   }
 
   .preview-width {
@@ -991,19 +1098,49 @@ onBeforeUnmount(() => {
     width: 100%;
     margin-left: 0px;
   }
+
+  .progress-section {
+    padding: 8px 15px;
+  }
+
+  .progress-info h3 {
+    font-size: 16px;
+  }
+
+  .progress-info p {
+    font-size: 12px;
+  }
+
+  .wave-button {
+    width: 80px;
+    height: 80px;
+  }
+
+  .wave-button .button-icon {
+    font-size: 28px;
+  }
+
+  .header-section {
+    padding: 12px 15px;
+  }
+
+  .header-section h2 {
+    font-size: 18px;
+  }
 }
 
 @media (max-width: 480px) {
   .camera-main {
-    align-items: start;
+    align-items: stretch;
+    padding: 5px;
   }
 
   .capture-actions {
-    bottom: 0px;
+    padding: 15px 10px;
   }
 
   .camera-container {
-    padding-bottom: 60px;
+    border-radius: 0;
   }
 
   .user-info-form {
@@ -1019,16 +1156,33 @@ onBeforeUnmount(() => {
     gap: 5px;
   }
 
-  .progress-header {
-    padding: 15px;
+  .progress-section {
+    padding: 8px 15px;
   }
 
-  .capture-info h3 {
-    font-size: 18px;
+  .progress-info h3 {
+    font-size: 16px;
   }
 
-  .capture-info p {
-    font-size: 14px;
+  .progress-info p {
+    font-size: 12px;
+  }
+
+  .wave-button {
+    width: 70px;
+    height: 70px;
+  }
+
+  .wave-button .button-icon {
+    font-size: 24px;
+  }
+
+  .header-section {
+    padding: 10px 12px;
+  }
+
+  .header-section h2 {
+    font-size: 16px;
   }
 }
 </style>
