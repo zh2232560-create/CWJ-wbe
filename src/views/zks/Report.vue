@@ -345,7 +345,7 @@
 
 <script setup>
 // 导入依赖
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import CircularProgress from '@/components/common/CircularProgress.vue'
 import zksAPI from '@/api/zks.js'
@@ -421,10 +421,9 @@ const apiData = reactive({
   },
 })
 const isLoading = ref(true)
-// 生命周期：组件挂载后执行
-onMounted(() => {
-  // 获取路由参数 id
-  const id = route.query.reportId || '6'
+
+// 获取报告详情的方法
+const fetchReportDetail = (id) => {
   console.log('apiData初始值', apiData)
   console.log('请求的报告ID', id)
 
@@ -461,7 +460,25 @@ onMounted(() => {
         isLoading.value = false // 失败也隐藏动画
       }, remainingTime)
     })
+}
+
+// 生命周期：组件挂载后执行
+onMounted(() => {
+  // 获取路由参数 id
+  const id = route.query.reportId || '6'
+  fetchReportDetail(id)
 })
+
+// 监听路由变化，当reportId改变时重新获取数据
+watch(
+  () => route.query.reportId,
+  (newId, oldId) => {
+    if (newId !== oldId) {
+      isLoading.value = true
+      fetchReportDetail(newId || '6')
+    }
+  }
+)
 
 // 页面方法（直接声明函数，无需放在 methods 中）
 const backhome = () => {

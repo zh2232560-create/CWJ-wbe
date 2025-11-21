@@ -111,6 +111,15 @@ const routes = [
       favicon: '/zks_camera.ico', // 足康树主页面专属图标
     },
   },
+  {
+    path: '/wxj/bluetooth',
+    name: 'bluetoothtest',
+    component: () => import('@/views/wxj/bluetoothtest.vue'),
+    meta: {
+      title: '蓝牙功能测试',
+      favicon: '/favicon.ico',
+    },
+  },
 ]
 
 const router = createRouter({

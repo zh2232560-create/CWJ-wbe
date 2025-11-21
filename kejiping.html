@@ -1,0 +1,883 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>机器人销售数据展示大屏</title>
+    <!-- 引入Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入Font Awesome -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css"
+      rel="stylesheet"
+    />
+    <!-- 引入Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <!-- 引入中国地图SVG -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts/map/js/china.js"></script>
+
+    <!-- Tailwind配置 -->
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: '#00f0ff',
+              secondary: '#7b2ffd',
+              accent: '#ff3e78',
+              dark: '#0a0e17',
+              darker: '#05070a',
+              light: '#e0e0e0',
+            },
+            fontFamily: {
+              sans: ['Inter', 'system-ui', 'sans-serif'],
+              mono: ['Roboto Mono', 'monospace'],
+            },
+          },
+        },
+      }
+    </script>
+
+    <!-- 自定义工具类 -->
+    <style type="text/tailwindcss">
+      @layer utilities {
+        .content-auto {
+          content-visibility: auto;
+        }
+        .text-shadow {
+          text-shadow: 0 0 8px rgba(0, 240, 255, 0.7);
+        }
+        .card-glow {
+          box-shadow:
+            0 0 15px rgba(0, 240, 255, 0.2),
+            0 0 5px rgba(0, 240, 255, 0.1);
+        }
+        .bg-grid {
+          background-image:
+            linear-gradient(rgba(0, 240, 255, 0.05) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 240, 255, 0.05) 1px, transparent 1px);
+          background-size: 20px 20px;
+        }
+        .animate-float {
+          animation: float 6s ease-in-out infinite;
+        }
+        .animate-pulse-slow {
+          animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+      }
+
+      @keyframes float {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-10px);
+        }
+      }
+    </style>
+  </head>
+
+  <body class="bg-dark text-light min-h-screen overflow-x-hidden">
+    <!-- 粒子背景容器 -->
+    <div id="particles-js" class="fixed inset-0 z-0"></div>
+
+    <!-- 顶部导航 -->
+    <header class="relative z-10 bg-darker/70 backdrop-blur-md border-b border-primary/20">
+      <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+        <div class="flex items-center space-x-2">
+          <div
+            class="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center"
+          >
+            <i class="fa fa-robot text-2xl"></i>
+          </div>
+          <h1 class="text-2xl font-bold text-shadow">机器人销售数据中心</h1>
+        </div>
+
+        <div class="flex items-center space-x-6">
+          <div class="hidden md:flex items-center space-x-4">
+            <button
+              class="px-4 py-2 rounded-lg bg-primary/10 hover:bg-primary/20 transition-all duration-300 border border-primary/30"
+            >
+              <i class="fa fa-refresh mr-2"></i>刷新数据
+            </button>
+            <button
+              class="px-4 py-2 rounded-lg bg-secondary/10 hover:bg-secondary/20 transition-all duration-300 border border-secondary/30"
+            >
+              <i class="fa fa-download mr-2"></i>导出报告
+            </button>
+          </div>
+
+          <div class="relative">
+            <button
+              class="flex items-center space-x-2 bg-darker p-2 rounded-full border border-primary/30"
+            >
+              <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                <i class="fa fa-user"></i>
+              </div>
+              <span class="hidden md:inline">管理员</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- 主要内容区域 -->
+    <main class="relative z-10 container mx-auto px-4 py-6">
+      <!-- 数据概览卡片 -->
+      <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- 总销售额 -->
+        <div
+          class="bg-darker/60 backdrop-blur-sm rounded-xl p-6 card-glow border border-primary/20 hover:border-primary/40 transition-all duration-300 transform hover:-translate-y-1"
+        >
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-gray-400 text-sm">总销售额</p>
+              <h3
+                class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-shadow mt-2"
+                id="total-sales"
+              >
+                ¥0
+              </h3>
+              <p class="text-primary/80 text-sm flex items-center mt-2">
+                <i class="fa fa-arrow-up mr-1"></i>
+                <span id="sales-growth">0%</span>
+                <span class="ml-1">较上月</span>
+              </p>
+            </div>
+            <div class="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+              <i class="fa fa-line-chart text-2xl text-primary animate-pulse-slow"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- 总发货量 -->
+        <div
+          class="bg-darker/60 backdrop-blur-sm rounded-xl p-6 card-glow border border-secondary/20 hover:border-secondary/40 transition-all duration-300 transform hover:-translate-y-1"
+        >
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-gray-400 text-sm">总发货量</p>
+              <h3
+                class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-shadow mt-2"
+                id="total-shipments"
+              >
+                0
+              </h3>
+              <p class="text-secondary/80 text-sm flex items-center mt-2">
+                <i class="fa fa-arrow-up mr-1"></i>
+                <span id="shipments-growth">0%</span>
+                <span class="ml-1">较上月</span>
+              </p>
+            </div>
+            <div class="w-14 h-14 rounded-full bg-secondary/10 flex items-center justify-center">
+              <i class="fa fa-truck text-2xl text-secondary animate-pulse-slow"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- 活跃客户 -->
+        <div
+          class="bg-darker/60 backdrop-blur-sm rounded-xl p-6 card-glow border border-accent/20 hover:border-accent/40 transition-all duration-300 transform hover:-translate-y-1"
+        >
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-gray-400 text-sm">活跃客户</p>
+              <h3
+                class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-shadow mt-2"
+                id="active-customers"
+              >
+                0
+              </h3>
+              <p class="text-accent/80 text-sm flex items-center mt-2">
+                <i class="fa fa-arrow-up mr-1"></i>
+                <span id="customers-growth">0%</span>
+                <span class="ml-1">较上月</span>
+              </p>
+            </div>
+            <div class="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center">
+              <i class="fa fa-users text-2xl text-accent animate-pulse-slow"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- 市场覆盖率 -->
+        <div
+          class="bg-darker/60 backdrop-blur-sm rounded-xl p-6 card-glow border border-green-500/20 hover:border-green-500/40 transition-all duration-300 transform hover:-translate-y-1"
+        >
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-gray-400 text-sm">市场覆盖率</p>
+              <h3
+                class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-shadow mt-2"
+                id="market-coverage"
+              >
+                0%
+              </h3>
+              <p class="text-green-500/80 text-sm flex items-center mt-2">
+                <i class="fa fa-arrow-up mr-1"></i>
+                <span id="coverage-growth">0%</span>
+                <span class="ml-1">较上月</span>
+              </p>
+            </div>
+            <div class="w-14 h-14 rounded-full bg-green-500/10 flex items-center justify-center">
+              <i class="fa fa-map-marker text-2xl text-green-500 animate-pulse-slow"></i>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 主要图表区域 -->
+      <section class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <!-- 中国地图 -->
+        <div
+          class="lg:col-span-2 bg-darker/60 backdrop-blur-sm rounded-xl p-6 card-glow border border-primary/20 h-[clamp(300px,50vw,600px)]"
+        >
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-shadow">销售地区分布</h2>
+            <div class="flex space-x-2">
+              <button
+                class="px-3 py-1 rounded bg-primary/10 text-primary text-sm hover:bg-primary/20 transition-all"
+              >
+                销售额
+              </button>
+              <button
+                class="px-3 py-1 rounded bg-darker text-gray-400 text-sm hover:bg-primary/10 transition-all"
+              >
+                发货量
+              </button>
+            </div>
+          </div>
+          <div id="china-map" class="w-full h-[calc(100%-40px)]"></div>
+        </div>
+
+        <!-- 产品销售分布 -->
+        <div
+          class="bg-darker/60 backdrop-blur-sm rounded-xl p-6 card-glow border border-secondary/20"
+        >
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-shadow">产品销售分布</h2>
+            <div class="flex space-x-2">
+              <button
+                class="px-3 py-1 rounded bg-secondary/10 text-secondary text-sm hover:bg-secondary/20 transition-all"
+              >
+                占比
+              </button>
+              <button
+                class="px-3 py-1 rounded bg-darker text-gray-400 text-sm hover:bg-secondary/10 transition-all"
+              >
+                销量
+              </button>
+            </div>
+          </div>
+          <div class="h-[250px]">
+            <canvas id="product-pie-chart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- 次要图表区域 -->
+      <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- 销售趋势 -->
+        <div
+          class="bg-darker/60 backdrop-blur-sm rounded-xl p-6 card-glow border border-primary/20"
+        >
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-shadow">销售趋势分析</h2>
+            <div class="flex space-x-2">
+              <button
+                class="px-3 py-1 rounded bg-primary/10 text-primary text-sm hover:bg-primary/20 transition-all"
+              >
+                月度
+              </button>
+              <button
+                class="px-3 py-1 rounded bg-darker text-gray-400 text-sm hover:bg-primary/10 transition-all"
+              >
+                季度
+              </button>
+              <button
+                class="px-3 py-1 rounded bg-darker text-gray-400 text-sm hover:bg-primary/10 transition-all"
+              >
+                年度
+              </button>
+            </div>
+          </div>
+          <div class="h-[300px]">
+            <canvas id="sales-trend-chart"></canvas>
+          </div>
+        </div>
+
+        <!-- 销售表现雷达图 -->
+        <div
+          class="bg-darker/60 backdrop-blur-sm rounded-xl p-6 card-glow border border-secondary/20"
+        >
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-shadow">销售表现雷达图</h2>
+            <div class="flex space-x-2">
+              <button
+                class="px-3 py-1 rounded bg-secondary/10 text-secondary text-sm hover:bg-secondary/20 transition-all"
+              >
+                本季度
+              </button>
+              <button
+                class="px-3 py-1 rounded bg-darker text-gray-400 text-sm hover:bg-secondary/10 transition-all"
+              >
+                上季度
+              </button>
+            </div>
+          </div>
+          <div class="h-[300px]">
+            <canvas id="performance-radar-chart"></canvas>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- 页脚 -->
+    <footer
+      class="relative z-10 bg-darker/70 backdrop-blur-md border-t border-primary/20 mt-8 py-4"
+    >
+      <div class="container mx-auto px-4 text-center text-gray-400 text-sm">
+        <p>© 2025 机器人销售数据中心 | 实时数据更新中...</p>
+      </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+      // 粒子背景效果
+      document.addEventListener('DOMContentLoaded', function () {
+        // 创建粒子背景
+        const particlesContainer = document.getElementById('particles-js')
+        const particleCount = Math.floor(window.innerWidth / 15) // 根据屏幕宽度调整粒子数量
+
+        for (let i = 0; i < particleCount; i++) {
+          const particle = document.createElement('div')
+
+          // 随机粒子大小
+          const size = Math.random() * 3 + 1
+
+          // 随机粒子位置
+          const x = Math.random() * 100
+          const y = Math.random() * 100
+
+          // 随机动画持续时间
+          const duration = Math.random() * 30 + 20
+
+          // 随机颜色
+          const colors = ['rgba(0, 240, 255, ', 'rgba(123, 47, 253, ', 'rgba(255, 62, 120, ']
+          const color = colors[Math.floor(Math.random() * colors.length)]
+
+          // 设置粒子样式
+          particle.style.cssText = `
+          position: absolute;
+          width: ${size}px;
+          height: ${size}px;
+          background: ${color}0.3);
+          border-radius: 50%;
+          top: ${y}%;
+          left: ${x}%;
+          box-shadow: 0 0 ${size * 2}px ${color}0.5);
+          animation: float ${duration}s linear infinite;
+          opacity: ${Math.random() * 0.7 + 0.2};
+          z-index: -1;
+        `
+
+          particlesContainer.appendChild(particle)
+        }
+
+        // 创建连接线
+        function createConnections() {
+          const particles = document.querySelectorAll('#particles-js > div')
+          const connections = []
+
+          // 只在屏幕宽度足够大时创建连接线
+          if (window.innerWidth > 768) {
+            for (let i = 0; i < particles.length; i++) {
+              for (let j = i + 1; j < particles.length; j++) {
+                const p1 = particles[i]
+                const p2 = particles[j]
+
+                // 计算粒子之间的距离
+                const rect1 = p1.getBoundingClientRect()
+                const rect2 = p2.getBoundingClientRect()
+
+                const dx = rect1.left - rect2.left
+                const dy = rect1.top - rect2.top
+                const distance = Math.sqrt(dx * dx + dy * dy)
+
+                // 如果粒子距离足够近，创建连接线
+                if (distance < 100) {
+                  const connection = document.createElement('div')
+                  const angle = (Math.atan2(dy, dx) * 180) / Math.PI
+                  const opacity = 1 - distance / 100
+
+                  connection.style.cssText = `
+                  position: absolute;
+                  width: ${distance}px;
+                  height: 1px;
+                  background: linear-gradient(90deg, rgba(0, 240, 255, ${opacity * 0.3}), rgba(123, 47, 253, ${opacity * 0.3}));
+                  top: ${rect1.top + rect1.height / 2}px;
+                  left: ${rect1.left + rect1.width / 2}px;
+                  transform-origin: left center;
+                  transform: rotate(${angle}deg);
+                  z-index: -1;
+                `
+
+                  particlesContainer.appendChild(connection)
+                  connections.push(connection)
+                }
+              }
+            }
+          }
+
+          // 定期清理连接线
+          setTimeout(() => {
+            connections.forEach((conn) => conn.remove())
+          }, 2000)
+        }
+
+        // 每2秒创建一次连接线
+        setInterval(createConnections, 2000)
+
+        // 初始化图表和数据
+        initCharts()
+        initMap()
+        updateData()
+
+        // 每5秒更新一次数据
+        setInterval(updateData, 5000)
+      })
+
+      // 初始化图表
+      function initCharts() {
+        // 产品销售分布饼状图
+        const productCtx = document.getElementById('product-pie-chart').getContext('2d')
+        const productChart = new Chart(productCtx, {
+          type: 'doughnut',
+          data: {
+            labels: ['工业机器人', '服务机器人', '医疗机器人', '教育机器人', '其他'],
+            datasets: [
+              {
+                data: [0, 0, 0, 0, 0],
+                backgroundColor: [
+                  'rgba(0, 240, 255, 0.7)',
+                  'rgba(123, 47, 253, 0.7)',
+                  'rgba(255, 62, 120, 0.7)',
+                  'rgba(16, 185, 129, 0.7)',
+                  'rgba(245, 158, 11, 0.7)',
+                ],
+                borderColor: 'rgba(10, 14, 23, 0.8)',
+                borderWidth: 2,
+                hoverOffset: 10,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: {
+                  color: 'rgba(224, 224, 224, 0.8)',
+                  font: {
+                    family: 'Inter, sans-serif',
+                  },
+                  padding: 15,
+                },
+              },
+            },
+            cutout: '65%',
+            animation: {
+              animateScale: true,
+              animateRotate: true,
+            },
+          },
+        })
+
+        // 销售趋势图
+        const salesCtx = document.getElementById('sales-trend-chart').getContext('2d')
+        const salesChart = new Chart(salesCtx, {
+          type: 'line',
+          data: {
+            labels: [
+              '1月',
+              '2月',
+              '3月',
+              '4月',
+              '5月',
+              '6月',
+              '7月',
+              '8月',
+              '9月',
+              '10月',
+              '11月',
+              '12月',
+            ],
+            datasets: [
+              {
+                label: '销售额',
+                data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                borderColor: 'rgba(0, 240, 255, 0.8)',
+                backgroundColor: 'rgba(0, 240, 255, 0.1)',
+                tension: 0.4,
+                fill: true,
+                borderWidth: 2,
+                pointBackgroundColor: 'rgba(0, 240, 255, 1)',
+                pointRadius: 4,
+                pointHoverRadius: 6,
+              },
+              {
+                label: '发货量',
+                data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                borderColor: 'rgba(123, 47, 253, 0.8)',
+                backgroundColor: 'rgba(123, 47, 253, 0.1)',
+                tension: 0.4,
+                fill: true,
+                borderWidth: 2,
+                pointBackgroundColor: 'rgba(123, 47, 253, 1)',
+                pointRadius: 4,
+                pointHoverRadius: 6,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'top',
+                labels: {
+                  color: 'rgba(224, 224, 224, 0.8)',
+                  font: {
+                    family: 'Inter, sans-serif',
+                  },
+                  padding: 15,
+                },
+              },
+            },
+            scales: {
+              x: {
+                grid: {
+                  color: 'rgba(224, 224, 224, 0.05)',
+                },
+                ticks: {
+                  color: 'rgba(224, 224, 224, 0.6)',
+                },
+              },
+              y: {
+                grid: {
+                  color: 'rgba(224, 224, 224, 0.05)',
+                },
+                ticks: {
+                  color: 'rgba(224, 224, 224, 0.6)',
+                  callback: function (value) {
+                    if (value >= 1000000) {
+                      return (value / 1000000).toFixed(1) + 'M'
+                    } else if (value >= 1000) {
+                      return (value / 1000).toFixed(1) + 'K'
+                    }
+                    return value
+                  },
+                },
+              },
+            },
+            interaction: {
+              mode: 'index',
+              intersect: false,
+            },
+            animation: {
+              duration: 1000,
+            },
+          },
+        })
+
+        // 销售表现雷达图
+        const radarCtx = document.getElementById('performance-radar-chart').getContext('2d')
+        const radarChart = new Chart(radarCtx, {
+          type: 'radar',
+          data: {
+            labels: ['销售额', '市场份额', '客户满意度', '产品质量', '交付准时率', '售后服务'],
+            datasets: [
+              {
+                label: '本季度',
+                data: [0, 0, 0, 0, 0, 0],
+                backgroundColor: 'rgba(0, 240, 255, 0.2)',
+                borderColor: 'rgba(0, 240, 255, 0.8)',
+                pointBackgroundColor: 'rgba(0, 240, 255, 1)',
+                pointBorderColor: '#fff',
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: 'rgba(0, 240, 255, 1)',
+                borderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'top',
+                labels: {
+                  color: 'rgba(224, 224, 224, 0.8)',
+                  font: {
+                    family: 'Inter, sans-serif',
+                  },
+                  padding: 15,
+                },
+              },
+            },
+            scales: {
+              r: {
+                angleLines: {
+                  color: 'rgba(224, 224, 224, 0.1)',
+                },
+                grid: {
+                  color: 'rgba(224, 224, 224, 0.1)',
+                },
+                pointLabels: {
+                  color: 'rgba(224, 224, 224, 0.8)',
+                  font: {
+                    family: 'Inter, sans-serif',
+                    size: 12,
+                  },
+                },
+                ticks: {
+                  color: 'rgba(224, 224, 224, 0.6)',
+                  backdropColor: 'transparent',
+                  stepSize: 20,
+                },
+              },
+            },
+            animation: {
+              duration: 1000,
+            },
+          },
+        })
+
+        // 将图表保存到window对象以便更新
+        window.productChart = productChart
+        window.salesChart = salesChart
+        window.radarChart = radarChart
+      }
+
+      // 初始化中国地图
+      function initMap() {
+        const mapContainer = document.getElementById('china-map')
+        const myChart = echarts.init(mapContainer)
+
+        // 地图配置
+        const option = {
+          backgroundColor: 'transparent',
+          tooltip: {
+            trigger: 'item',
+            formatter: '{b}: {c}万元',
+            textStyle: {
+              color: '#fff',
+            },
+            backgroundColor: 'rgba(10, 14, 23, 0.8)',
+            borderColor: 'rgba(0, 240, 255, 0.3)',
+            borderWidth: 1,
+          },
+          visualMap: {
+            min: 0,
+            max: 1000,
+            left: 'left',
+            top: 'bottom',
+            text: ['高', '低'],
+            calculable: true,
+            inRange: {
+              color: ['#00f0ff', '#7b2ffd', '#ff3e78'],
+            },
+            textStyle: {
+              color: 'rgba(224, 224, 224, 0.8)',
+            },
+          },
+          series: [
+            {
+              name: '销售额',
+              type: 'map',
+              mapType: 'china',
+              roam: false,
+              label: {
+                show: true,
+                color: 'rgba(224, 224, 224, 0.6)',
+                fontSize: 10,
+              },
+              emphasis: {
+                label: {
+                  color: '#fff',
+                  fontSize: 12,
+                },
+                itemStyle: {
+                  areaColor: 'rgba(255, 62, 120, 0.6)',
+                },
+              },
+              data: [],
+            },
+          ],
+        }
+
+        myChart.setOption(option)
+
+        // 响应窗口大小变化
+        window.addEventListener('resize', function () {
+          myChart.resize()
+        })
+
+        // 保存地图实例以便更新
+        window.mapChart = myChart
+      }
+
+      // 更新数据
+      function updateData() {
+        // 生成随机数据
+        const totalSales = Math.floor(Math.random() * 50000000) + 50000000
+        const salesGrowth = (Math.random() * 15 + 5).toFixed(1)
+
+        const totalShipments = Math.floor(Math.random() * 5000) + 5000
+        const shipmentsGrowth = (Math.random() * 10 + 3).toFixed(1)
+
+        const activeCustomers = Math.floor(Math.random() * 500) + 500
+        const customersGrowth = (Math.random() * 8 + 2).toFixed(1)
+
+        const marketCoverage = (Math.random() * 30 + 60).toFixed(1)
+        const coverageGrowth = (Math.random() * 2 + 0.5).toFixed(1)
+
+        // 更新概览卡片数据
+        animateValue('total-sales', totalSales, 1500)
+        document.getElementById('sales-growth').textContent = `${salesGrowth}%`
+
+        animateValue('total-shipments', totalShipments, 1500)
+        document.getElementById('shipments-growth').textContent = `${shipmentsGrowth}%`
+
+        animateValue('active-customers', activeCustomers, 1500)
+        document.getElementById('customers-growth').textContent = `${customersGrowth}%`
+
+        animateValue('market-coverage', marketCoverage, 1500, '%')
+        document.getElementById('coverage-growth').textContent = `${coverageGrowth}%`
+
+        // 更新产品销售分布饼状图
+        const productData = [
+          Math.floor(Math.random() * 40) + 20,
+          Math.floor(Math.random() * 30) + 15,
+          Math.floor(Math.random() * 20) + 10,
+          Math.floor(Math.random() * 15) + 5,
+          Math.floor(Math.random() * 10) + 2,
+        ]
+
+        window.productChart.data.datasets[0].data = productData
+        window.productChart.update()
+
+        // 更新销售趋势图
+        const salesData = []
+        const shipmentsData = []
+
+        for (let i = 0; i < 12; i++) {
+          salesData.push(Math.floor(Math.random() * 10000000) + 5000000)
+          shipmentsData.push(Math.floor(Math.random() * 1000) + 500)
+        }
+
+        window.salesChart.data.datasets[0].data = salesData
+        window.salesChart.data.datasets[1].data = shipmentsData
+        window.salesChart.update()
+
+        // 更新雷达图
+        const radarData = [
+          Math.floor(Math.random() * 60) + 40,
+          Math.floor(Math.random() * 60) + 40,
+          Math.floor(Math.random() * 60) + 40,
+          Math.floor(Math.random() * 60) + 40,
+          Math.floor(Math.random() * 60) + 40,
+          Math.floor(Math.random() * 60) + 40,
+        ]
+
+        window.radarChart.data.datasets[0].data = radarData
+        window.radarChart.update()
+
+        // 更新地图数据
+        const mapData = [
+          { name: '北京', value: Math.floor(Math.random() * 500) + 500 },
+          { name: '河南', value: Math.floor(Math.random() * 500) + 300 },
+          { name: '河北', value: Math.floor(Math.random() * 400) + 200 },
+          { name: '天津', value: Math.floor(Math.random() * 300) + 100 },
+          { name: '广东', value: Math.floor(Math.random() * 800) + 600 },
+          { name: '西藏', value: Math.floor(Math.random() * 100) + 50 },
+          { name: '山东', value: Math.floor(Math.random() * 600) + 400 },
+          { name: '上海', value: Math.floor(Math.random() * 700) + 500 },
+          { name: '四川', value: Math.floor(Math.random() * 500) + 300 },
+          { name: '重庆', value: Math.floor(Math.random() * 400) + 200 },
+          { name: '内蒙古', value: Math.floor(Math.random() * 300) + 100 },
+          { name: '云南', value: Math.floor(Math.random() * 200) + 50 },
+          { name: '陕西', value: Math.floor(Math.random() * 400) + 200 },
+          { name: '青海', value: Math.floor(Math.random() * 100) + 30 },
+          { name: '广西', value: Math.floor(Math.random() * 200) + 50 },
+          { name: '浙江', value: Math.floor(Math.random() * 600) + 400 },
+          { name: '新疆', value: Math.floor(Math.random() * 300) + 100 },
+          { name: '湖南', value: Math.floor(Math.random() * 400) + 200 },
+          { name: '湖北', value: Math.floor(Math.random() * 500) + 300 },
+          { name: '江西', value: Math.floor(Math.random() * 300) + 150 },
+          { name: '黑龙江', value: Math.floor(Math.random() * 200) + 100 },
+          { name: '吉林', value: Math.floor(Math.random() * 250) + 120 },
+          { name: '辽宁', value: Math.floor(Math.random() * 400) + 200 },
+          { name: '江苏', value: Math.floor(Math.random() * 700) + 500 },
+          { name: '安徽', value: Math.floor(Math.random() * 300) + 150 },
+          { name: '福建', value: Math.floor(Math.random() * 400) + 200 },
+          { name: '贵州', value: Math.floor(Math.random() * 150) + 50 },
+          { name: '甘肃', value: Math.floor(Math.random() * 100) + 30 },
+          { name: '宁夏', value: Math.floor(Math.random() * 80) + 20 },
+          { name: '海南', value: Math.floor(Math.random() * 100) + 30 },
+        ]
+
+        window.mapChart.setOption({
+          series: [
+            {
+              data: mapData,
+            },
+          ],
+        })
+      }
+
+      // 数字动画
+      function animateValue(id, start, duration, suffix = '') {
+        const obj = document.getElementById(id)
+        const end = parseFloat(start)
+        start = parseFloat(obj.innerText.replace(/,/g, '').replace(/¥/g, '').replace(/%/g, ''))
+
+        const range = end - start
+        const minTimer = 50
+        let stepTime = Math.abs(Math.floor(duration / range))
+
+        stepTime = Math.max(stepTime, minTimer)
+
+        let startTime = new Date().getTime()
+        let endTime = startTime + duration
+        let timer
+
+        function run() {
+          let now = new Date().getTime()
+          let remaining = Math.max((endTime - now) / duration, 0)
+          let value = Math.round(end - remaining * range)
+
+          if (id === 'total-sales') {
+            obj.innerHTML = `¥${value.toLocaleString()}`
+          } else if (suffix === '%') {
+            obj.innerHTML = `${value.toFixed(1)}%`
+          } else {
+            obj.innerHTML = value.toLocaleString() + suffix
+          }
+
+          if (value == end) {
+            clearInterval(timer)
+          }
+        }
+
+        timer = setInterval(run, stepTime)
+        run()
+      }
+    </script>
+  </body>
+</html>

@@ -69,7 +69,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { dayOrDaysToDate, ElMessage } from 'element-plus'
 import zksAPI from '@/api/zks.js'
 import HeartLoading from '@/components/common/vue/HeartLoading.vue'
@@ -100,6 +100,21 @@ onMounted(() => {
     fetchInitialDiagnosis()
   })
 })
+
+// 监听路由参数变化
+watch(
+  () => route.query.id,
+  (newId, oldId) => {
+    if (newId !== oldId) {
+      diagnosisId.value = newId || ''
+      isLoading.value = true
+      // 先获取分类列表，再获取初始诊断结果
+      fetchClassificationList().then(() => {
+        fetchInitialDiagnosis()
+      })
+    }
+  },
+)
 
 // 计算属性：当前选中的项目
 const selectedItems = computed(() => {
