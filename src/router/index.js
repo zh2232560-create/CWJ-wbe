@@ -112,9 +112,18 @@ const routes = [
     },
   },
   {
+    path: '/wxj/Inspection',
+    name: 'Inspection',
+    component: () => import('@/views/wxj/Inspection.vue'),
+    meta: {
+      title: '智能检测页面',
+      favicon: '/favicon.ico',
+    },
+  },
+  {
     path: '/wxj/bluetooth',
-    name: 'bluetoothtest',
-    component: () => import('@/views/wxj/bluetoothtest.vue'),
+    name: 'Bluetooth',
+    component: () => import('@/views/wxj/Bluetooth.vue'),
     meta: {
       title: '蓝牙功能测试',
       favicon: '/favicon.ico',

@@ -2,7 +2,7 @@
 // const VUE_APP_API_URL = process.env.VUE_APP_API_URL || `${location.origin}/adminapi`;
 // const VUE_APP_API_URL = '/api'
 // const VUE_APP_API_URL = 'https://www.pkahealth.com/api/v2'
-// export const BASE_URL = 'https://www.pkahealth.com/'
+export const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://www.pkahealth.com/'
 
 export const baseURL = import.meta.env.VITE_API_BASE_URL + '/api/v2'
 const Setting = {
