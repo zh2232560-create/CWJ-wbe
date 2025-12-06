@@ -60,12 +60,46 @@ const routes = [
       favicon: '/favicon.ico',
     },
   },
+
+  /**
+   * 蔡文姬页面路由
+   */
   {
     path: '/cwj/shipping',
     name: 'shippingpage',
     component: () => import('@/views/cwj/shippingpage.vue'),
     meta: {
       title: '蔡文姬发货页面',
+      favicon: '/favicon.ico',
+    },
+  },
+  {
+    path: '/cwj/admin',
+    name: 'adminedit',
+    component: () => import('@/views/cwj/adminpage.vue'),
+    props: true,
+    meta: {
+      title: '蔡文姬管理员页面',
+      favicon: '/favicon.ico',
+    },
+  },
+  {
+    path: '/cwj/purchase',
+    name: 'purchasepage',
+    component: () => import('@/views/cwj/purchasepage.vue'),
+    props: true,
+    meta: {
+      title: '蔡文姬采购页面',
+      favicon: '/favicon.ico',
+    },
+  },
+  {
+    path: '/cwj/receipt',
+    name: 'receiptpage',
+    component: () => import('@/views/cwj/receiptpage.vue'),
+    props: true,
+    meta: {
+      title: '蔡文姬签收页面',
       favicon: '/favicon.ico',
     },
   },

@@ -1,9 +1,9 @@
 <template>
-  <div class="shipping-page">
+  <div class="shipping-page body">
     <el-card class="shipping-card">
       <template #header>
         <div class="card-header">
-          <span>蔡文姬发货页面</span>
+          <span>发货页面</span>
         </div>
       </template>
 
@@ -198,6 +198,66 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 
+// 模拟API接口
+const api = {
+  // 获取门店列表
+  getStores: () => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve([
+          {
+            id: 1,
+            name: '北京旗舰店',
+            address: '北京市朝阳区xxx路xxx号',
+            manager: '张三',
+            managerPhone: '13800000001',
+          },
+          {
+            id: 2,
+            name: '上海体验店',
+            address: '上海市浦东新区xxx路xxx号',
+            manager: '李四',
+            managerPhone: '13800000002',
+          },
+          {
+            id: 3,
+            name: '广州服务中心',
+            address: '广州市天河区xxx路xxx号',
+            manager: '王五',
+            managerPhone: '13800000003',
+          },
+        ])
+      }, 300)
+    })
+  },
+
+  // 获取厂家列表
+  getManufacturers: () => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve([
+          { id: 1, name: '艾灸科技有限公司', contact: '赵六', phone: '13900000001' },
+          { id: 2, name: '理疗设备厂', contact: '孙七', phone: '13900000002' },
+        ])
+      }, 300)
+    })
+  },
+
+  // 提交发货信息
+  submitShippingForm: (formData) => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        // 模拟后端处理
+        console.log('提交发货数据:', formData)
+        resolve({
+          success: true,
+          message: '发货信息提交成功',
+        })
+      }, 800)
+    })
+  },
+}
+
 // 表单引用
 const shippingFormRef = ref()
 
@@ -245,36 +305,25 @@ const shippingRules = {
   'devices.serialNumber': [{ required: true, message: '请输入厂商SN', trigger: 'blur' }],
 }
 
-// 门店选项（模拟数据）
-const storeOptions = ref([
-  {
-    id: 1,
-    name: '北京旗舰店',
-    address: '北京市朝阳区xxx路xxx号',
-    manager: '张三',
-    managerPhone: '13800000001',
-  },
-  {
-    id: 2,
-    name: '上海体验店',
-    address: '上海市浦东新区xxx路xxx号',
-    manager: '李四',
-    managerPhone: '13800000002',
-  },
-  {
-    id: 3,
-    name: '广州服务中心',
-    address: '广州市天河区xxx路xxx号',
-    manager: '王五',
-    managerPhone: '13800000003',
-  },
-])
+// 门店选项（从API获取）
+const storeOptions = ref([])
 
-// 厂家选项（模拟数据）
-const manufacturerOptions = ref([
-  { id: 1, name: '艾灸科技有限公司', contact: '赵六', phone: '13900000001' },
-  { id: 2, name: '理疗设备厂', contact: '孙七', phone: '13900000002' },
-])
+// 厂家选项（从API获取）
+const manufacturerOptions = ref([])
+
+// 初始化数据
+const initializeData = async () => {
+  try {
+    // 获取门店列表
+    storeOptions.value = await api.getStores()
+
+    // 获取厂家列表
+    manufacturerOptions.value = await api.getManufacturers()
+  } catch (error) {
+    console.error('初始化数据失败:', error)
+    ElMessage.error('数据加载失败')
+  }
+}
 
 // 处理门店选择变更
 const handleStoreChange = (storeId) => {
@@ -365,16 +414,21 @@ const submitForm = async (formEl) => {
 }
 
 // 提交发货数据
-const submitShippingData = () => {
-  // 这里应该是实际的API调用
-  console.log('提交的数据:', shippingForm)
+const submitShippingData = async () => {
+  try {
+    const result = await api.submitShippingForm(shippingForm)
 
-  // 模拟API调用成功
-  setTimeout(() => {
-    ElMessage.success('发货信息提交成功！')
-    // 重置表单
-    resetForm(shippingFormRef.value)
-  }, 1000)
+    if (result.success) {
+      ElMessage.success('发货信息提交成功！')
+      // 重置表单
+      resetForm(shippingFormRef.value)
+    } else {
+      ElMessage.error(result.message || '发货失败')
+    }
+  } catch (error) {
+    console.error('提交发货数据失败:', error)
+    ElMessage.error('发货信息提交失败，请重试')
+  }
 }
 
 // 重置表单
@@ -387,12 +441,18 @@ const resetForm = (formEl) => {
       serialNumber: '',
     },
   ]
+
+  // 重新初始化数据
+  initializeData()
 }
 
-// 组件挂载时设置默认发货时间为当前时间
+// 组件挂载时设置默认发货时间为当前时间并加载数据
 onMounted(() => {
   const now = new Date()
   shippingForm.shipTime = formatDate(now)
+
+  // 初始化数据
+  initializeData()
 
   // 移除事件监听器
   window.removeEventListener('resize', checkMobile)

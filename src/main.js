@@ -7,6 +7,8 @@ import App from './App.vue'
 import router from './router'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
+// 引入全局样式变量
+import './assets/styles/variables.css'
 //引入 Element Plus 的所有图标库
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 const app = createApp(App)
