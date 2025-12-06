@@ -53,8 +53,20 @@ export default {
       store_name: data.store_name || '',
       product_name: data.product_name || '',
       product_status: data.product_status || '',
+      store_id: data.store_id || '',
     }
-    return request.get('/cwj/getDeviceList', { params })
+    return request.get('/cwj/device/statistics-list', { params })
+  },
+  /**
+   * 待发货店铺查询
+   * @param {*} data
+   */
+  getpendingstores(data) {
+    const params = {
+      days: data.days || 5,
+      status: data.status || '待发货',
+    }
+    return request.get('/cwj/order/stores-by-arrival-days', { params })
   },
   /**
    * 添加厂商信息

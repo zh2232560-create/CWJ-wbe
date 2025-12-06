@@ -151,8 +151,12 @@
               <el-table-column prop="productType" label="产品类型" :width="mobile ? 120 : 200">
                 <template #default="scope">
                   <el-select v-model="scope.row.productType" placeholder="请选择产品类型">
-                    <el-option label="艾灸机器人" value="艾灸机器人" />
-                    <el-option label="理疗机器人" value="理疗机器人" />
+                    <el-option
+                      v-for="device in deviceOptions"
+                      :key="device.id"
+                      :label="device.product_type"
+                      :value="device.product_type"
+                    />
                   </el-select>
                 </template>
               </el-table-column>
@@ -197,66 +201,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-
-// 模拟API接口
-const api = {
-  // 获取门店列表
-  getStores: () => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve([
-          {
-            id: 1,
-            name: '北京旗舰店',
-            address: '北京市朝阳区xxx路xxx号',
-            manager: '张三',
-            managerPhone: '13800000001',
-          },
-          {
-            id: 2,
-            name: '上海体验店',
-            address: '上海市浦东新区xxx路xxx号',
-            manager: '李四',
-            managerPhone: '13800000002',
-          },
-          {
-            id: 3,
-            name: '广州服务中心',
-            address: '广州市天河区xxx路xxx号',
-            manager: '王五',
-            managerPhone: '13800000003',
-          },
-        ])
-      }, 300)
-    })
-  },
-
-  // 获取厂家列表
-  getManufacturers: () => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve([
-          { id: 1, name: '艾灸科技有限公司', contact: '赵六', phone: '13900000001' },
-          { id: 2, name: '理疗设备厂', contact: '孙七', phone: '13900000002' },
-        ])
-      }, 300)
-    })
-  },
-
-  // 提交发货信息
-  submitShippingForm: (formData) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // 模拟后端处理
-        console.log('提交发货数据:', formData)
-        resolve({
-          success: true,
-          message: '发货信息提交成功',
-        })
-      }, 800)
-    })
-  },
-}
+import cwjAPI from '@/api/cwj'
 
 // 表单引用
 const shippingFormRef = ref()
@@ -311,17 +256,63 @@ const storeOptions = ref([])
 // 厂家选项（从API获取）
 const manufacturerOptions = ref([])
 
+// 设备选项（从API获取）
+const deviceOptions = ref([])
+
 // 初始化数据
 const initializeData = async () => {
   try {
-    // 获取门店列表
-    storeOptions.value = await api.getStores()
-
+    await getStoreList()
+    await getDeviceList() // 使用默认的-1作为门店ID
     // 获取厂家列表
-    manufacturerOptions.value = await api.getManufacturers()
+    const manufacturerResponse = await cwjAPI.getmanufacturerlist({ limit: 50 })
+    if (manufacturerResponse.status === 200) {
+      manufacturerOptions.value = manufacturerResponse.data.list.map((manufacturer) => ({
+        id: manufacturer.id,
+        name: manufacturer.manufacturer_name,
+        contact: manufacturer.contact_person,
+        phone: manufacturer.contact_phone,
+      }))
+    }
   } catch (error) {
     console.error('初始化数据失败:', error)
     ElMessage.error('数据加载失败')
+  }
+}
+
+// 获取门店列表
+const getStoreList = async () => {
+  try {
+    const storeResponse = await cwjAPI.getpendingstores({ days: 50, status: '待发货' })
+    if (storeResponse.status === 200) {
+      storeOptions.value = storeResponse.data.map((store) => ({
+        id: store.store_id,
+        name: store.store_name,
+        address: store.address,
+        manager: store.manager,
+        managerPhone: store.manager_phone,
+      }))
+    }
+  } catch (error) {
+    console.error('获取门店列表失败:', error)
+    ElMessage.error('门店数据加载失败')
+  }
+}
+
+// 获取设备列表
+const getDeviceList = async (storeId = -1) => {
+  try {
+    const deviceResponse = await cwjAPI.getdevicelist({
+      store_id: storeId,
+      product_status: 1,
+      limit: 50,
+    })
+    if (deviceResponse.status === 200) {
+      deviceOptions.value = deviceResponse.data.list
+    }
+  } catch (error) {
+    console.error('获取设备列表失败:', error)
+    ElMessage.error('设备数据加载失败')
   }
 }
 
@@ -337,6 +328,9 @@ const handleStoreChange = (storeId) => {
     shippingForm.manager = ''
     shippingForm.managerPhone = ''
   }
+
+  // 根据选择的门店ID获取设备列表
+  getDeviceList(storeId)
 }
 
 // 处理厂家选择变更
@@ -416,14 +410,37 @@ const submitForm = async (formEl) => {
 // 提交发货数据
 const submitShippingData = async () => {
   try {
-    const result = await api.submitShippingForm(shippingForm)
+    // 构造提交数据
+    const submitData = {
+      store_id: shippingForm.store,
+      sender_type: 'manufacturer',
+      sender_id: shippingForm.manufacturer,
+      ship_time: shippingForm.shipTime,
+      tracking_number: shippingForm.trackingNumber,
+      logistics_batch: shippingForm.batch,
+      logistics_company: '',
+      ship_status: 'shipped',
+      actual_arrival_time: '',
+      receiver: '',
+      receive_time: '',
+      remark: '',
+      items: shippingForm.devices.map((device) => ({
+        product_type: device.productType,
+        manufacturer_sn: device.serialNumber,
+      })),
+    }
 
-    if (result.success) {
+    // 打印提交数据
+    console.log('提交数据:', submitData)
+
+    const result = await cwjAPI.addlogisticsinfo(submitData)
+
+    if (result.status === 200) {
       ElMessage.success('发货信息提交成功！')
       // 重置表单
       resetForm(shippingFormRef.value)
     } else {
-      ElMessage.error(result.message || '发货失败')
+      ElMessage.error(result.msg || '发货失败')
     }
   } catch (error) {
     console.error('提交发货数据失败:', error)

@@ -252,16 +252,18 @@
 </template>
 
 <script>
+import cwjAPI from '@/api/cwj'
+
 export default {
   name: 'DeviceDeploymentSystem',
   data() {
     return {
       // 统计数据
       stats: {
-        pending: 12,
-        shipping: 28,
-        deployed: 156,
-        error: 3,
+        pending: 0,
+        shipping: 0,
+        deployed: 0,
+        error: 0,
       },
 
       // 筛选条件
@@ -307,21 +309,14 @@ export default {
       },
 
       // 选项数据
-      storeOptions: [
-        { value: 'store1', label: '北京旗舰店' },
-        { value: 'store2', label: '上海分店' },
-        { value: 'store3', label: '广州分店' },
-        { value: 'store4', label: '深圳分店' },
-      ],
-      productTypeOptions: [
-        { value: 'type1', label: '蔡文姬理疗机器人' },
-        { value: 'type2', label: '蔡文姬艾灸机器人' },
-      ],
+      storeOptions: [],
+      productTypeOptions: [],
       statusOptions: [
-        { value: 'pending', label: '待发货' },
-        { value: 'shipping', label: '运输中' },
-        { value: 'deployed', label: '已部署' },
-        { value: 'error', label: '异常' },
+        { value: '0', label: '待处理' },
+        { value: '1', label: '待发货' },
+        { value: '2', label: '已发货' },
+        { value: '5', label: '已部署' },
+        { value: '6', label: '异常' },
       ],
     }
   },
@@ -332,19 +327,17 @@ export default {
       let filtered = this.devices
 
       if (this.filters.store) {
-        filtered = filtered.filter((device) => device.storeValue === this.filters.store)
+        filtered = filtered.filter((device) => device.targetStore === this.storeOptions.find(s => s.value == this.filters.store)?.label)
       }
 
       if (this.filters.productType) {
-        filtered = filtered.filter((device) => device.productTypeValue === this.filters.productType)
+        filtered = filtered.filter((device) => device.productType === this.filters.productType)
       }
 
       if (this.filters.status) {
-        filtered = filtered.filter(
-          (device) =>
-            device.shippingStatus === this.filters.status ||
-            device.receivingStatus === this.filters.status,
-        )
+        // 将前端状态映射回后端状态
+        const backendStatus = this.filters.status
+        filtered = filtered.filter((device) => device.productStatus == backendStatus)
       }
 
       return filtered
@@ -353,126 +346,143 @@ export default {
     // 可用设备列表（用于调拨）
     availableDevices() {
       return this.devices.filter(
-        (device) => device.shippingStatus === 'deployed' && device.receivingStatus === 'deployed',
+        (device) => device.productStatus == 5, // 已部署的设备
       )
     },
 
     // 可回收设备列表
     recyclableDevices() {
       return this.devices.filter(
-        (device) => device.shippingStatus === 'error' || device.receivingStatus === 'error',
+        (device) => device.productStatus == 6, // 异常的设备
       )
     },
   },
 
   methods: {
-    // 初始化数据（模拟API调用）
+    // 初始化数据（真实API调用）
     async initData() {
       try {
-        // 模拟API延迟
-        await this.delay(1000)
+        // 并行获取所有需要的数据
+        const [deviceResponse, storeResponse, productResponse] = await Promise.all([
+          cwjAPI.getdevicelist({ limit: 100 }),
+          cwjAPI.getstorelist({ limit: 100 }),
+          cwjAPI.getproductlist({ limit: 100 })
+        ])
 
-        // 模拟设备数据
-        this.devices = [
-          {
-            id: 1,
-            yfSn: 'WAYCEE-TD-A1-001',
-            manufacturerSn: 'H3MDEN-0041',
-            productType: '蔡文姬理疗机器人',
-            productTypeValue: 'type1',
-            targetStore: '北京旗舰店',
-            storeValue: 'store1',
-            shippingStatus: 'deployed',
-            receivingStatus: 'deployed',
-            deploymentTime: '2024-01-15 14:30',
-          },
-          {
-            id: 2,
-            yfSn: 'WAYCEE-TD-J1-001',
-            manufacturerSn: 'H3MDEN-0042',
-            productType: '蔡文姬艾灸机器人',
-            productTypeValue: 'type2',
-            targetStore: '上海分店',
-            storeValue: 'store2',
-            shippingStatus: 'shipping',
-            receivingStatus: 'pending',
-            deploymentTime: '-',
-          },
-          {
-            id: 3,
-            yfSn: 'WAYCEE-TD-J1-002',
-            manufacturerSn: 'H3MDEN-0043',
-            productType: '蔡文姬艾灸机器人',
-            productTypeValue: 'type3',
-            targetStore: '广州分店',
-            storeValue: 'store3',
-            shippingStatus: 'error',
-            receivingStatus: 'error',
-            deploymentTime: '-',
-            exceptionType: '签收问题',
-          },
-          {
-            id: 4,
-            yfSn: 'WAYCEE-TD-A1-002',
-            manufacturerSn: 'H3MDEN-0044',
-            productType: '蔡文姬理疗机器人',
-            productTypeValue: 'type1',
-            targetStore: '深圳分店',
-            storeValue: 'store4',
-            shippingStatus: 'pending',
-            receivingStatus: 'pending',
-            deploymentTime: '-',
-          },
-        ]
+        // 处理设备数据
+        if (deviceResponse.status === 200) {
+          this.devices = deviceResponse.data.list.map(device => ({
+            id: device.id,
+            yfSn: device.youfang_sn,
+            manufacturerSn: device.manufacturer_sn,
+            productType: device.product_type,
+            targetStore: device.target_store,
+            shippingStatus: this.mapStatusToDeviceStatus(device.product_status),
+            receivingStatus: this.mapStatusToDeviceStatus(device.product_status),
+            deploymentTime: device.deploy_time || '-',
+            productStatus: device.product_status,
+            productStatusText: device.product_status_text
+          }))
 
-        // 模拟异常数据
-        this.exceptionIssues = [
-          {
-            id: 1,
-            deviceSn: 'WAYCEE-TD-J1-003',
-            exceptionType: '签收问题',
-            description: '收货地址错误，无法送达',
-            occurrenceTime: '2024-01-16 10:20',
-            status: '待处理',
-            actions: [
-              { type: 'reship', text: '重新发货', class: 'danger' },
-              { type: 'markLost', text: '标记丢失', class: 'primary' },
-              { type: 'repair', text: '转维修', class: 'success' },
-            ],
-          },
-          {
-            id: 2,
-            deviceSn: 'WAYCEE-TD-A1-003',
-            exceptionType: '设备故障',
-            description: '设备无法启动，需要维修',
-            occurrenceTime: '2024-01-16 15:45',
-            status: '处理中',
-            actions: [
-              { type: 'view', text: '查看详情', class: 'primary' },
-              { type: 'update', text: '更新状态', class: 'success' },
-            ],
-          },
-        ]
+          // 更新统计信息
+          this.stats.pending = deviceResponse.data.statistics.pending_shipment_count
+          this.stats.shipping = deviceResponse.data.statistics.shipped_not_received_count
+          this.stats.deployed = deviceResponse.data.statistics.deployed_count
+          this.stats.error = deviceResponse.data.statistics.exception_count
+        }
+
+        // 处理门店数据
+        if (storeResponse.status === 200) {
+          this.storeOptions = storeResponse.data.list.map(store => ({
+            value: store.id,
+            label: store.store_name
+          }))
+        }
+
+        // 处理产品类型数据
+        if (productResponse.status === 200) {
+          // 使用Set去重，只保留唯一的product_type
+          const uniqueProductTypes = [...new Set(productResponse.data.list.map(product => product.product_type))]
+          this.productTypeOptions = uniqueProductTypes.map(type => ({
+            value: type,
+            label: type
+          }))
+        }
 
         this.showNotification('数据加载成功', 'success')
       } catch (error) {
-        this.showNotification('数据加载失败', 'error')
+        this.showNotification('数据加载失败: ' + error.message, 'error')
         console.error('数据加载错误:', error)
       }
     },
 
+    // 将设备状态映射到前端使用的状态
+    mapStatusToDeviceStatus(productStatus) {
+      const statusMap = {
+        0: 'pending',  // 待处理
+        1: 'pending',  // 待发货
+        2: 'shipping', // 已发货
+        5: 'deployed', // 已部署
+        6: 'error'     // 异常
+      }
+      return statusMap[productStatus] || 'pending'
+    },
+
     // 应用筛选
-    applyFilters() {
-      this.showNotification('筛选已应用', 'success')
+    async applyFilters() {
+      try {
+        const params = {
+          limit: 100
+        }
+
+        // 添加筛选条件
+        if (this.filters.store) {
+          params.store_id = this.filters.store
+        }
+        
+        if (this.filters.productType) {
+          params.product_type = this.filters.productType
+        }
+        
+        if (this.filters.status) {
+          // 将前端状态映射回后端状态
+          params.product_status = this.filters.status
+        }
+
+        const response = await cwjAPI.getdevicelist(params)
+        
+        if (response.status === 200) {
+          this.devices = response.data.list.map(device => ({
+            id: device.id,
+            yfSn: device.youfang_sn,
+            manufacturerSn: device.manufacturer_sn,
+            productType: device.product_type,
+            targetStore: device.target_store,
+            shippingStatus: this.mapStatusToDeviceStatus(device.product_status),
+            receivingStatus: this.mapStatusToDeviceStatus(device.product_status),
+            deploymentTime: device.deploy_time || '-',
+            productStatus: device.product_status,
+            productStatusText: device.product_status_text
+          }))
+          
+          this.showNotification('筛选完成', 'success')
+        }
+      } catch (error) {
+        this.showNotification('筛选失败: ' + error.message, 'error')
+        console.error('筛选错误:', error)
+      }
     },
 
     // 重置筛选
-    resetFilters() {
+    async resetFilters() {
       this.filters = {
         store: '',
         productType: '',
         status: '',
       }
+      
+      // 重新加载所有数据
+      await this.initData()
       this.showNotification('筛选条件已重置', 'success')
     },
 
@@ -592,9 +602,8 @@ export default {
       this.exportLoading[type] = true
 
       try {
-        // 模拟API延迟
-        await this.delay(2000)
-
+        // 这里应该调用真实的导出API
+        // 暂时显示成功消息
         const reportNames = {
           deployment: '部署统计',
           exception: '异常情况',
@@ -603,7 +612,7 @@ export default {
 
         this.showNotification(`${reportNames[type]}报表导出成功`, 'success')
       } catch (error) {
-        this.showNotification('报表导出失败', 'error')
+        this.showNotification('报表导出失败: ' + error.message, 'error')
       } finally {
         this.exportLoading[type] = false
       }
@@ -643,8 +652,8 @@ export default {
     // 初始化数据
     this.initData()
 
-    // 启动实时数据更新
-    this.updateStats()
+    // 移除模拟的实时数据更新，因为我们现在使用真实数据
+    // this.updateStats()
   },
 }
 </script>
