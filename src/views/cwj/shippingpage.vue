@@ -150,7 +150,11 @@
             <el-table :data="shippingForm.devices" style="width: 100%" border>
               <el-table-column prop="productType" label="产品类型" :width="mobile ? 120 : 200">
                 <template #default="scope">
-                  <el-select v-model="scope.row.productType" placeholder="请选择产品类型">
+                  <el-select
+                    v-model="scope.row.productType"
+                    placeholder="请选择产品类型"
+                    @change="(selectedProduct) => handleProductChange(scope.row, selectedProduct)"
+                  >
                     <el-option
                       v-for="device in deviceOptions"
                       :key="device.id"
@@ -235,6 +239,7 @@ const shippingForm = reactive({
   devices: [
     // 设备信息
     {
+      productId: '', // 添加设备ID字段
       productType: '',
       serialNumber: '',
     },
@@ -308,7 +313,10 @@ const getDeviceList = async (storeId = -1) => {
       limit: 50,
     })
     if (deviceResponse.status === 200) {
-      deviceOptions.value = deviceResponse.data.list
+      deviceOptions.value = deviceResponse.data.list.map((device) => ({
+        id: device.id,
+        product_type: device.product_type,
+      }))
     }
   } catch (error) {
     console.error('获取设备列表失败:', error)
@@ -331,6 +339,17 @@ const handleStoreChange = (storeId) => {
 
   // 根据选择的门店ID获取设备列表
   getDeviceList(storeId)
+}
+
+// 处理产品选择变更
+const handleProductChange = (row, selectedProduct) => {
+  // 根据选择的产品类型找到对应的设备ID
+  const selectedDevice = deviceOptions.value.find(
+    (device) => device.product_type === selectedProduct,
+  )
+  if (selectedDevice) {
+    row.productId = selectedDevice.id
+  }
 }
 
 // 处理厂家选择变更
@@ -367,6 +386,7 @@ const validateSerialNumber = async (device) => {
 // 添加设备行
 const addDeviceRow = () => {
   shippingForm.devices.push({
+    productId: '', // 添加设备ID字段
     productType: '',
     serialNumber: '',
   })
@@ -425,7 +445,7 @@ const submitShippingData = async () => {
       receive_time: '',
       remark: '',
       items: shippingForm.devices.map((device) => ({
-        product_type: device.productType,
+        order_item_id: device.productId,
         manufacturer_sn: device.serialNumber,
       })),
     }
@@ -454,6 +474,7 @@ const resetForm = (formEl) => {
   formEl.resetFields()
   shippingForm.devices = [
     {
+      productId: '', // 添加设备ID字段
       productType: '',
       serialNumber: '',
     },

@@ -101,10 +101,16 @@
                 <td>{{ device.deploymentTime || '-' }}</td>
                 <td>
                   <div class="btn-group">
-                    <button class="btn btn-primary btn-sm" @click="viewDevice(device)">
-                      {{ getActionText(device) }}
+                    <button
+                      v-if="device.productStatus == 0"
+                      class="btn btn-primary btn-sm"
+                      @click="processShipment(device)"
+                    >
+                      发货
                     </button>
-                    <button class="btn btn-success btn-sm" @click="editDevice(device)">编辑</button>
+                    <button v-else class="btn btn-success btn-sm" @click="editDevice(device)">
+                      编辑
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -114,7 +120,7 @@
       </div>
 
       <!-- 异常处理区 -->
-      <div class="card">
+      <div class="card" style="display: none">
         <div class="section-title">异常处理区</div>
         <div class="table-wrapper">
           <table>
@@ -156,7 +162,7 @@
       </div>
 
       <!-- 部署关系管理 -->
-      <div class="card">
+      <div class="card" style="display: none">
         <div class="section-title">部署关系管理</div>
         <div class="btn-group" style="margin-bottom: 15px">
           <button class="btn btn-primary" @click="showTransfer">设备调拨</button>
@@ -213,7 +219,7 @@
       </div>
 
       <!-- 报表功能 -->
-      <div class="card">
+      <div class="card" style="display: none">
         <div class="section-title">报表导出</div>
         <div class="btn-group">
           <button
@@ -327,7 +333,11 @@ export default {
       let filtered = this.devices
 
       if (this.filters.store) {
-        filtered = filtered.filter((device) => device.targetStore === this.storeOptions.find(s => s.value == this.filters.store)?.label)
+        filtered = filtered.filter(
+          (device) =>
+            device.targetStore ===
+            this.storeOptions.find((s) => s.value == this.filters.store)?.label,
+        )
       }
 
       if (this.filters.productType) {
@@ -366,12 +376,12 @@ export default {
         const [deviceResponse, storeResponse, productResponse] = await Promise.all([
           cwjAPI.getdevicelist({ limit: 100 }),
           cwjAPI.getstorelist({ limit: 100 }),
-          cwjAPI.getproductlist({ limit: 100 })
+          cwjAPI.getproductlist({ limit: 100 }),
         ])
 
         // 处理设备数据
         if (deviceResponse.status === 200) {
-          this.devices = deviceResponse.data.list.map(device => ({
+          this.devices = deviceResponse.data.list.map((device) => ({
             id: device.id,
             yfSn: device.youfang_sn,
             manufacturerSn: device.manufacturer_sn,
@@ -381,7 +391,7 @@ export default {
             receivingStatus: this.mapStatusToDeviceStatus(device.product_status),
             deploymentTime: device.deploy_time || '-',
             productStatus: device.product_status,
-            productStatusText: device.product_status_text
+            productStatusText: device.product_status_text,
           }))
 
           // 更新统计信息
@@ -393,19 +403,21 @@ export default {
 
         // 处理门店数据
         if (storeResponse.status === 200) {
-          this.storeOptions = storeResponse.data.list.map(store => ({
+          this.storeOptions = storeResponse.data.list.map((store) => ({
             value: store.id,
-            label: store.store_name
+            label: store.store_name,
           }))
         }
 
         // 处理产品类型数据
         if (productResponse.status === 200) {
           // 使用Set去重，只保留唯一的product_type
-          const uniqueProductTypes = [...new Set(productResponse.data.list.map(product => product.product_type))]
-          this.productTypeOptions = uniqueProductTypes.map(type => ({
+          const uniqueProductTypes = [
+            ...new Set(productResponse.data.list.map((product) => product.product_type)),
+          ]
+          this.productTypeOptions = uniqueProductTypes.map((type) => ({
             value: type,
-            label: type
+            label: type,
           }))
         }
 
@@ -419,11 +431,11 @@ export default {
     // 将设备状态映射到前端使用的状态
     mapStatusToDeviceStatus(productStatus) {
       const statusMap = {
-        0: 'pending',  // 待处理
-        1: 'pending',  // 待发货
+        0: 'pending', // 待处理
+        1: 'processing', // 待发货
         2: 'shipping', // 已发货
         5: 'deployed', // 已部署
-        6: 'error'     // 异常
+        6: 'error', // 异常
       }
       return statusMap[productStatus] || 'pending'
     },
@@ -432,27 +444,27 @@ export default {
     async applyFilters() {
       try {
         const params = {
-          limit: 100
+          limit: 100,
         }
 
         // 添加筛选条件
         if (this.filters.store) {
           params.store_id = this.filters.store
         }
-        
+
         if (this.filters.productType) {
           params.product_type = this.filters.productType
         }
-        
+
         if (this.filters.status) {
           // 将前端状态映射回后端状态
           params.product_status = this.filters.status
         }
 
         const response = await cwjAPI.getdevicelist(params)
-        
+
         if (response.status === 200) {
-          this.devices = response.data.list.map(device => ({
+          this.devices = response.data.list.map((device) => ({
             id: device.id,
             yfSn: device.youfang_sn,
             manufacturerSn: device.manufacturer_sn,
@@ -462,9 +474,9 @@ export default {
             receivingStatus: this.mapStatusToDeviceStatus(device.product_status),
             deploymentTime: device.deploy_time || '-',
             productStatus: device.product_status,
-            productStatusText: device.product_status_text
+            productStatusText: device.product_status_text,
           }))
-          
+
           this.showNotification('筛选完成', 'success')
         }
       } catch (error) {
@@ -480,7 +492,7 @@ export default {
         productType: '',
         status: '',
       }
-      
+
       // 重新加载所有数据
       await this.initData()
       this.showNotification('筛选条件已重置', 'success')
@@ -494,9 +506,10 @@ export default {
     // 获取状态文本
     getStatusText(status) {
       const statusMap = {
-        pending: '待发货',
+        pending: '待处理',
+        processing: '待发货',
         shipping: '运输中',
-        deployed: '已发货',
+        deployed: '已部署',
         error: '异常',
       }
       return statusMap[status] || status
@@ -504,7 +517,7 @@ export default {
 
     // 获取操作按钮文本
     getActionText(device) {
-      if (device.shippingStatus === 'pending') return '发货'
+      if (device.productStatus == 0) return '发货'
       if (device.shippingStatus === 'shipping') return '追踪'
       if (device.shippingStatus === 'error') return '处理'
       return '查看'
@@ -518,6 +531,30 @@ export default {
     // 编辑设备
     editDevice(device) {
       this.showNotification(`编辑设备 ${device.yfSn}`, 'success')
+    },
+
+    // 处理发货
+    async processShipment(device) {
+      try {
+        const response = await cwjAPI.updateorderdetail({
+          item_id: device.id,
+          product_status: 1,
+        })
+
+        if (response.status === 200) {
+          // 更新本地设备状态
+          device.productStatus = 1
+          device.shippingStatus = 'processing'
+          device.receivingStatus = 'processing'
+
+          this.showNotification('发货成功', 'success')
+        } else {
+          throw new Error(response.msg || '发货失败')
+        }
+      } catch (error) {
+        this.showNotification('发货失败: ' + error.message, 'error')
+        console.error('发货失败:', error)
+      }
     },
 
     // 处理异常操作
@@ -957,6 +994,12 @@ tbody tr:hover {
   background: linear-gradient(135deg, #ffa500, #ff8c00);
   color: #fff;
   box-shadow: 0 2px 10px rgba(255, 165, 0, 0.4);
+}
+
+.status-processing {
+  background: linear-gradient(135deg, #8a2be2, #4b0082);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(138, 43, 226, 0.4);
 }
 
 .status-shipping {
