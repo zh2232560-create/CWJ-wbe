@@ -189,9 +189,9 @@
                 <div
                   class="sn-item"
                   v-for="(item, index) in snList"
-                  :key="item.sn"
-                  :class="{ selected: isSNSelected(item.sn) }"
-                  @click="toggleSN(item.sn)"
+                  :key="item.id"
+                  :class="{ selected: isSNSelected(item.id) }"
+                  @click="toggleSN(item)"
                 >
                   <div class="sn-header">
                     <span class="sn-code">{{ item.sn }}</span>
@@ -222,8 +222,8 @@
           <i class="ri-check-line"></i>
         </div>
         <h3>签收成功！</h3>
-        <p>设备已成功入库，系统已自动生成有方SN</p>
-        <div class="generated-sn">{{ generatedSN }}</div>
+        <p>设备已成功签收，系统已自动生成有方SN</p>
+        <div class="generated-sn" v-show="false">{{ generatedSN }}</div>
         <p style="font-size: 13px; color: #666">
           厂商SN与有方SN已建立绑定关系<br />
           设备状态已更新为"已部署"
@@ -238,109 +238,7 @@
 </template>
 
 <script>
-// 模拟API接口
-const api = {
-  // 获取门店列表
-  getStores: () => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve([
-          { id: 'SH001', name: '上海旗舰店', code: 'SH001' },
-          { id: 'BJ002', name: '北京朝阳店', code: 'BJ002' },
-          { id: 'GZ003', name: '广州天河店', code: 'GZ003' },
-          { id: 'SZ004', name: '深圳南山店', code: 'SZ004' },
-          { id: 'HZ005', name: '杭州西湖店', code: 'HZ005' },
-        ])
-      }, 300)
-    })
-  },
-
-  // 根据门店ID获取待签收设备列表
-  getSNListByStore: (storeId) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const snDataByStore = {
-          SH001: [
-            { sn: 'MFR-2025-A00128', model: 'XR-9000 Pro', shipDate: '2025-01-08', quantity: 1 },
-            {
-              sn: 'MFR-2025-A00129',
-              model: 'SR-7 手术机器人',
-              shipDate: '2025-01-08',
-              quantity: 1,
-            },
-            {
-              sn: 'MFR-2025-A00130',
-              model: 'CR-1600 协作机器人',
-              shipDate: '2025-01-09',
-              quantity: 1,
-            },
-          ],
-          BJ002: [
-            {
-              sn: 'MFR-2025-B00045',
-              model: 'AMR-500 导航机器人',
-              shipDate: '2025-01-07',
-              quantity: 1,
-            },
-            { sn: 'MFR-2025-B00046', model: 'XR-9000 标准版', shipDate: '2025-01-07', quantity: 1 },
-          ],
-          GZ003: [
-            {
-              sn: 'MFR-2025-C00012',
-              model: 'HeavyBot-500 重载型',
-              shipDate: '2025-01-06',
-              quantity: 1,
-            },
-          ],
-          SZ004: [
-            {
-              sn: 'MFR-2025-D00088',
-              model: 'NanoBot 纳米装配型',
-              shipDate: '2025-01-09',
-              quantity: 1,
-            },
-            {
-              sn: 'MFR-2025-D00089',
-              model: 'NanoBot 纳米装配型',
-              shipDate: '2025-01-09',
-              quantity: 1,
-            },
-            {
-              sn: 'MFR-2025-D00090',
-              model: 'XR-9000 Pro Max',
-              shipDate: '2025-01-10',
-              quantity: 1,
-            },
-            {
-              sn: 'MFR-2025-D00091',
-              model: 'SR-7 手术机器人',
-              shipDate: '2025-01-10',
-              quantity: 1,
-            },
-          ],
-          HZ005: [],
-        }
-
-        resolve(snDataByStore[storeId] || [])
-      }, 500)
-    })
-  },
-
-  // 提交签收信息
-  submitSignForm: (formData) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // 模拟后端处理
-        console.log('提交签收数据:', formData)
-        resolve({
-          success: true,
-          message: '签收成功',
-          generatedSN: `YF-${new Date().getFullYear()}-${Math.floor(Math.random() * 900000) + 100000}`,
-        })
-      }, 800)
-    })
-  },
-}
+import cwjAPI from '@/api/cwj'
 
 export default {
   name: 'receiptPlatform',
@@ -380,8 +278,23 @@ export default {
     // 初始化数据
     async initializeData() {
       try {
-        // 获取门店列表
-        this.stores = await api.getStores()
+        // 获取门店列表 (已发货状态)
+        const storeResponse = await cwjAPI.getstoredetailbyinfo({
+          product_status: 2,
+          youfang_sn: '',
+          start_time: '',
+          end_time: '',
+          page: 1,
+          limit: 40,
+        })
+
+        if (storeResponse.status === 200) {
+          this.stores = storeResponse.data.list.map((store) => ({
+            id: store.store_id,
+            name: store.store_name,
+            code: store.store_code,
+          }))
+        }
 
         // 设置当前时间
         const now = new Date()
@@ -403,7 +316,20 @@ export default {
 
       this.loading = true
       try {
-        this.snList = await api.getSNListByStore(this.formData.store)
+        // 根据门店ID获取待签收设备列表 (已发货状态)
+        const snResponse = await cwjAPI.getdevicelist({
+          store_id: this.formData.store,
+          product_status: 2, // 已发货状态
+        })
+
+        if (snResponse.status === 200) {
+          this.snList = snResponse.data.list.map((item) => ({
+            sn: item.youfang_sn,
+            model: item.product_type,
+            shipDate: item.ship_time ? item.ship_time.split(' ')[0] : '',
+            id: item.id,
+          }))
+        }
         this.selectedSNs = [] // 清空已选SN
       } catch (error) {
         console.error('加载SN列表失败:', error)
@@ -414,18 +340,18 @@ export default {
     },
 
     // 切换SN选择
-    toggleSN(sn) {
-      const index = this.selectedSNs.indexOf(sn)
+    toggleSN(item) {
+      const index = this.selectedSNs.findIndex((selected) => selected.id === item.id)
       if (index > -1) {
         this.selectedSNs.splice(index, 1)
       } else {
-        this.selectedSNs.push(sn)
+        this.selectedSNs.push(item)
       }
     },
 
     // 检查SN是否被选中
-    isSNSelected(sn) {
-      return this.selectedSNs.includes(sn)
+    isSNSelected(id) {
+      return this.selectedSNs.some((item) => item.id === id)
     },
 
     // 表单提交处理
@@ -460,15 +386,29 @@ export default {
 
       // 质检通过 - 提交签收
       try {
+        // 获取选中设备的ID列表
+        const selectedDeviceIds = this.selectedSNs.map((item) => item.id)
+
+        // 构造提交数据
         const submitData = {
-          ...this.formData,
-          selectedSNs: this.selectedSNs,
+          store_id: this.formData.store,
+          receiver_time: this.formData.receiveTime,
+          operator: this.formData.operator,
+          accessory_status: this.formData.accessoryComplete === 'yes' ? 1 : 0,
+          missing_reason: this.formData.accessoryIssueText,
+          function_status: this.formData.functionNormal === 'yes' ? 1 : 0,
+          function_issue_desc: this.formData.functionIssueText,
+          receiver_name: this.formData.responsiblePerson,
+          receiver_phone: this.formData.responsiblePhone,
+          items: selectedDeviceIds,
         }
 
-        const result = await api.submitSignForm(submitData)
+        const result = await cwjAPI.signinfo(submitData)
 
-        if (result.success) {
-          this.generatedSN = result.generatedSN
+        if (result.status === 200) {
+          this.generatedSN =
+            result.data.yf_sn ||
+            `YF-${new Date().getFullYear()}-${Math.floor(Math.random() * 900000) + 100000}`
           this.showSuccessModal = true
         } else {
           alert('签收失败，请重试')

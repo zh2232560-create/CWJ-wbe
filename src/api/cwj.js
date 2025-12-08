@@ -68,6 +68,21 @@ export default {
     }
     return request.get('/cwj/order/stores-by-arrival-days', { params })
   },
+
+  /**
+   * 通过其他信息获取门店详情
+   */
+  getstoredetailbyinfo(data) {
+    const params = {
+      product_status: data.product_status || -1,
+      youfang_sn: data.youfang_sn || '',
+      start_time: data.start_time || '',
+      end_time: data.end_time || '',
+      page: data.page || 1,
+      limit: data.limit || 10,
+    }
+    return request.get('/cwj/order/stores-by-item-status', { params })
+  },
   /**
    * 添加厂商信息
    */
