@@ -11,57 +11,100 @@
 
       <!-- 状态统计 -->
       <div class="stats-container">
-        <div class="stat-card">
+        <div class="stat-card" @click="goToPage('purchase')">
+          <div class="stat-label">订单数</div>
+          <div class="stat-number">{{ 10 }}</div>
+        </div>
+        <div class="stat-card" @click="goToPage('shipping')">
           <div class="stat-label">待发货</div>
           <div class="stat-number">{{ stats.pending }}</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card" @click="goToPage('deployed')">
           <div class="stat-label">运输中</div>
           <div class="stat-number">{{ stats.shipping }}</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card" @click="goToPage('receipt')">
           <div class="stat-label">已部署</div>
           <div class="stat-number">{{ stats.deployed }}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">异常设备</div>
-          <div class="stat-number">{{ stats.error }}</div>
         </div>
       </div>
 
       <!-- 筛选条件 -->
       <div class="card">
         <div class="section-title">筛选条件</div>
+
+        <!-- 时间筛选 -->
+        <div class="filter-section full-width">
+          <div class="filter-group">
+            <label><span style="margin-right: 10px">时间：</span>时间</label>
+            <select v-model="filters.time" class="full-width">
+              <option value="">全部</option>
+              <option value="week">近一周</option>
+              <option value="halfYear">近半年</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 地点筛选 -->
         <div class="filter-section">
           <div class="filter-group">
-            <label>门店</label>
-            <select v-model="filters.store">
+            <label><span style="margin-right: 10px">地区：</span>门店</label>
+            <select v-model="filters.store" class="uniform-width">
               <option value="">全部门店</option>
               <option v-for="store in storeOptions" :key="store.value" :value="store.value">
                 {{ store.label }}
               </option>
             </select>
           </div>
+
           <div class="filter-group">
-            <label>产品类型</label>
-            <select v-model="filters.productType">
-              <option value="">全部类型</option>
-              <option v-for="type in productTypeOptions" :key="type.value" :value="type.value">
-                {{ type.label }}
-              </option>
+            <label>大区</label>
+            <select v-model="filters.region" class="uniform-width">
+              <option value="">全部大区</option>
+              <option value="east">东部大区</option>
+              <option value="west">西部大区</option>
+              <option value="south">南部大区</option>
+              <option value="north">北部大区</option>
             </select>
           </div>
+
           <div class="filter-group">
-            <label>状态</label>
-            <select v-model="filters.status">
+            <label>省份</label>
+            <select v-model="filters.province" class="uniform-width">
+              <option value="">全部省份</option>
+              <option value="zhejiang">浙江</option>
+              <option value="beijing">北京</option>
+              <option value="shanghai">上海</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 机器人筛选 -->
+        <div class="filter-section">
+          <div class="filter-group">
+            <label><span style="margin-right: 10px">机器人：</span>状态</label>
+            <select v-model="filters.status" class="uniform-width">
               <option value="">全部状态</option>
               <option v-for="status in statusOptions" :key="status.value" :value="status.value">
                 {{ status.label }}
               </option>
             </select>
           </div>
-          <button class="btn btn-primary" @click="applyFilters">应用筛选</button>
-          <button class="btn btn-danger" @click="resetFilters">重置筛选</button>
+
+          <div class="filter-group">
+            <label>类型</label>
+            <select v-model="filters.productType" class="uniform-width">
+              <option value="">全部类型</option>
+              <option v-for="type in productTypeOptions" :key="type.value" :value="type.value">
+                {{ type.label }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div class="filter-section">
+          <button class="btn btn-primary" @click="applyFilters">筛选统计</button>
+          <button class="btn btn-danger" @click="resetFilters">重置统计</button>
         </div>
       </div>
 
@@ -277,6 +320,10 @@ export default {
         store: '',
         productType: '',
         status: '',
+        time: '',
+        region: '',
+        province: '',
+        robotType: '',
       },
 
       // 设备数据
@@ -324,6 +371,9 @@ export default {
         { value: '5', label: '已部署' },
         { value: '6', label: '异常' },
       ],
+
+      // 定时器
+      refreshTimer: null,
     }
   },
 
@@ -368,7 +418,42 @@ export default {
     },
   },
 
+  mounted() {
+    // 初始化数据
+    this.initData()
+
+    // 设置定时刷新，每分钟刷新一次
+    this.refreshTimer = setInterval(() => {
+      this.initData()
+    }, 60000) // 60000毫秒 = 1分钟
+
+    // 监听页面可见性变化
+    document.addEventListener('visibilitychange', this.handleVisibilityChange)
+
+    // 移除模拟的实时数据更新，因为我们现在使用真实数据
+    // this.updateStats()
+  },
+
+  beforeUnmount() {
+    // 清除定时器
+    if (this.refreshTimer) {
+      clearInterval(this.refreshTimer)
+      this.refreshTimer = null
+    }
+
+    // 移除事件监听器
+    document.removeEventListener('visibilitychange', this.handleVisibilityChange)
+  },
+
   methods: {
+    // 页面可见性变化处理
+    handleVisibilityChange() {
+      // 如果页面变为可见状态，则刷新数据
+      if (document.visibilityState === 'visible') {
+        this.initData()
+      }
+    },
+
     // 初始化数据（真实API调用）
     async initData() {
       try {
@@ -683,14 +768,38 @@ export default {
         })
       }, 5000)
     },
-  },
 
-  mounted() {
-    // 初始化数据
-    this.initData()
-
-    // 移除模拟的实时数据更新，因为我们现在使用真实数据
-    // this.updateStats()
+    // 页面跳转
+    goToPage(page) {
+      switch (page) {
+        case 'purchase':
+          // 跳转到采购页面（新开标签页，保留当前页面）
+          const routeData = this.$router.resolve({
+            path: '/cwj/purchase', // 目标路由路径
+          })
+          // 打开新标签页
+          window.open(routeData.href, '_blank')
+          break
+        case 'shipping':
+          // 跳转到发货页面
+          const routeshipping = this.$router.resolve({
+            path: '/cwj/shipping', // 目标路由路径
+          })
+          // 打开新标签页
+          window.open(routeshipping.href, '_blank')
+          break
+        case 'receipt':
+          // 跳转到签收页面
+          const routereipt = this.$router.resolve({
+            path: '/cwj/receipt', // 目标路由路径
+          })
+          // 打开新标签页
+          window.open(routereipt.href, '_blank')
+          break
+        default:
+          break
+      }
+    },
   },
 }
 </script>
@@ -802,16 +911,6 @@ export default {
 
 .card:hover::before {
   opacity: 0.3;
-  animation: borderRotate 3s linear infinite;
-}
-
-@keyframes borderRotate {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
 }
 
 @keyframes fadeInUp {
@@ -856,6 +955,10 @@ input {
   min-width: 150px;
 }
 
+.uniform-width {
+  min-width: 180px;
+}
+
 select:hover,
 input:hover,
 select:focus,
@@ -881,6 +984,7 @@ input:focus {
   transition: all 0.3s;
   position: relative;
   overflow: hidden;
+  cursor: pointer;
 }
 
 .stat-card::after {
@@ -966,7 +1070,6 @@ tbody tr {
 
 tbody tr:hover {
   background: rgba(0, 255, 255, 0.05);
-  transform: translateX(5px);
 }
 
 .status-badge {

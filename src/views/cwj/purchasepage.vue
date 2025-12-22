@@ -770,7 +770,7 @@ export default {
   left: -1px;
   right: -1px;
   bottom: -1px;
-  background: linear-gradient(45deg, transparent, rgba(102, 126, 234, 0.3), transparent);
+  /* background: linear-gradient(45deg, transparent, rgba(102, 126, 234, 0.3), transparent); */
   border-radius: 12px;
   opacity: 0;
   transition: opacity 0.3s;

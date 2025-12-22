@@ -3,7 +3,7 @@
     <el-card class="shipping-card">
       <template #header>
         <div class="card-header">
-          <span>发货页面</span>
+          <span>发货平台</span>
         </div>
       </template>
 
@@ -154,12 +154,13 @@
                     v-model="scope.row.productType"
                     placeholder="请选择产品类型"
                     @change="(selectedProduct) => handleProductChange(scope.row, selectedProduct)"
+                    style="width: 100%"
                   >
                     <el-option
-                      v-for="device in deviceOptions"
+                      v-for="device in getAvailableDevicesForSelect(scope.row)"
                       :key="device.id"
-                      :label="device.product_type"
-                      :value="device.product_type"
+                      :label="getDeviceDisplayLabel(device)"
+                      :value="device.id"
                     />
                   </el-select>
                 </template>
@@ -184,9 +185,25 @@
               </el-table-column>
             </el-table>
 
-            <el-button type="primary" plain @click="addDeviceRow" style="margin-top: 10px">
+            <el-button
+              type="primary"
+              plain
+              @click="addDeviceRow"
+              style="margin-top: 10px"
+              :disabled="!canAddMoreDevices"
+            >
               添加设备
             </el-button>
+
+            <div
+              v-if="deviceSelectionTips.length > 0"
+              class="selection-tips"
+              style="margin-top: 10px; color: #666; font-size: 12px"
+            >
+              <div v-for="tip in deviceSelectionTips" :key="tip.type">
+                {{ tip.type }}: 已选 {{ tip.selected }} / 总共 {{ tip.total }}
+              </div>
+            </div>
           </el-col>
         </el-row>
 
@@ -203,7 +220,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import cwjAPI from '@/api/cwj'
 
@@ -239,7 +256,7 @@ const shippingForm = reactive({
   devices: [
     // 设备信息
     {
-      productId: '', // 添加设备ID字段
+      deviceId: '',
       productType: '',
       serialNumber: '',
     },
@@ -263,6 +280,70 @@ const manufacturerOptions = ref([])
 
 // 设备选项（从API获取）
 const deviceOptions = ref([])
+
+// 设备类型统计
+const deviceTypeStats = computed(() => {
+  const stats = {}
+  deviceOptions.value.forEach((device) => {
+    if (!stats[device.product_type]) {
+      stats[device.product_type] = {
+        total: 0,
+        selected: 0,
+        available: 0,
+        devices: [],
+      }
+    }
+    stats[device.product_type].total++
+    stats[device.product_type].devices.push(device)
+  })
+
+  // 计算已选择的数量
+  shippingForm.devices.forEach((deviceRow) => {
+    if (deviceRow.deviceId) {
+      const device = deviceOptions.value.find((d) => d.id === deviceRow.deviceId)
+      if (device && stats[device.product_type]) {
+        stats[device.product_type].selected++
+      }
+    }
+  })
+
+  // 计算可用数量
+  Object.keys(stats).forEach((type) => {
+    stats[type].available = stats[type].total - stats[type].selected
+  })
+
+  return stats
+})
+
+// 设备选择提示
+const deviceSelectionTips = computed(() => {
+  const tips = []
+  Object.keys(deviceTypeStats.value).forEach((type) => {
+    const stat = deviceTypeStats.value[type]
+    tips.push({
+      type,
+      selected: stat.selected,
+      total: stat.total,
+      available: stat.available,
+    })
+  })
+  return tips
+})
+
+// 是否可以添加更多设备
+const canAddMoreDevices = computed(() => {
+  // 检查是否还有可用设备
+  const totalSelected = shippingForm.devices.filter((d) => d.deviceId).length
+  return totalSelected < deviceOptions.value.length
+})
+
+// 获取设备显示标签
+const getDeviceDisplayLabel = (device) => {
+  // 检查该设备是否已被选择
+  const isSelected = shippingForm.devices.some((row) => row.deviceId === device.id)
+  const selectedText = isSelected ? '(已选择)' : ''
+  return `${device.product_type} (ID: ${device.id}) ${selectedText}`
+}
 
 // 初始化数据
 const initializeData = async () => {
@@ -317,11 +398,24 @@ const getDeviceList = async (storeId = -1) => {
         id: device.id,
         product_type: device.product_type,
       }))
+      // 重置设备选择
+      resetDeviceSelections()
     }
   } catch (error) {
     console.error('获取设备列表失败:', error)
     ElMessage.error('设备数据加载失败')
   }
+}
+
+// 重置设备选择
+const resetDeviceSelections = () => {
+  shippingForm.devices = [
+    {
+      deviceId: '',
+      productType: '',
+      serialNumber: '',
+    },
+  ]
 }
 
 // 处理门店选择变更
@@ -341,14 +435,39 @@ const handleStoreChange = (storeId) => {
   getDeviceList(storeId)
 }
 
+// 获取当前行可用的设备选项
+const getAvailableDevicesForSelect = (currentRow) => {
+  // 获取所有已选择的设备ID（排除当前行自己的选择）
+  const selectedDeviceIds = new Set()
+  shippingForm.devices.forEach((row, index) => {
+    if (row !== currentRow && row.deviceId) {
+      selectedDeviceIds.add(row.deviceId)
+    }
+  })
+
+  // 过滤出可用的设备
+  return deviceOptions.value.filter((device) => {
+    // 如果设备已被其他行选择，则不可用
+    if (selectedDeviceIds.has(device.id)) {
+      return false
+    }
+    return true
+  })
+}
+
 // 处理产品选择变更
-const handleProductChange = (row, selectedProduct) => {
-  // 根据选择的产品类型找到对应的设备ID
-  const selectedDevice = deviceOptions.value.find(
-    (device) => device.product_type === selectedProduct,
-  )
-  if (selectedDevice) {
-    row.productId = selectedDevice.id
+const handleProductChange = (row, selectedDeviceId) => {
+  // 清空原来的选择
+  row.deviceId = ''
+  row.productType = ''
+
+  // 如果选择了设备
+  if (selectedDeviceId) {
+    const selectedDevice = deviceOptions.value.find((device) => device.id === selectedDeviceId)
+    if (selectedDevice) {
+      row.deviceId = selectedDevice.id
+      row.productType = selectedDevice.product_type
+    }
   }
 }
 
@@ -385,8 +504,14 @@ const validateSerialNumber = async (device) => {
 
 // 添加设备行
 const addDeviceRow = () => {
+  // 检查是否还有可用设备
+  if (!canAddMoreDevices.value) {
+    ElMessage.warning('所有设备都已被选择，无法添加新行')
+    return
+  }
+
   shippingForm.devices.push({
-    productId: '', // 添加设备ID字段
+    deviceId: '',
     productType: '',
     serialNumber: '',
   })
@@ -407,6 +532,14 @@ const submitForm = async (formEl) => {
 
   await formEl.validate((valid, fields) => {
     if (valid) {
+      // 检查是否有重复选择的设备
+      const deviceIds = shippingForm.devices.map((device) => device.deviceId).filter((id) => id)
+      const uniqueDeviceIds = new Set(deviceIds)
+      if (deviceIds.length !== uniqueDeviceIds.size) {
+        ElMessage.error('有重复选择的设备，请检查设备选择')
+        return
+      }
+
       // 验证所有序列号
       const validations = shippingForm.devices.map((device) => validateSerialNumber(device))
 
@@ -444,10 +577,19 @@ const submitShippingData = async () => {
       receiver: '',
       receive_time: '',
       remark: '',
-      items: shippingForm.devices.map((device) => ({
-        order_item_id: device.productId,
-        manufacturer_sn: device.serialNumber,
-      })),
+      items: shippingForm.devices
+        .filter((device) => device.deviceId)
+        .map((device) => ({
+          order_item_id: device.deviceId,
+          manufacturer_sn: device.serialNumber,
+        })),
+    }
+
+    // 检查是否有未选择设备的行
+    const emptyDevices = shippingForm.devices.filter((device) => !device.deviceId)
+    if (emptyDevices.length > 0) {
+      ElMessage.error('请为所有设备行选择具体的设备')
+      return
     }
 
     // 打印提交数据
@@ -472,13 +614,7 @@ const submitShippingData = async () => {
 const resetForm = (formEl) => {
   if (!formEl) return
   formEl.resetFields()
-  shippingForm.devices = [
-    {
-      productId: '', // 添加设备ID字段
-      productType: '',
-      serialNumber: '',
-    },
-  ]
+  resetDeviceSelections()
 
   // 重新初始化数据
   initializeData()
@@ -560,6 +696,10 @@ const formatDate = (date) => {
     padding: 10px 20px;
     font-size: 14px;
   }
+
+  .selection-tips {
+    font-size: 11px;
+  }
 }
 
 .shipping-card {
@@ -588,5 +728,12 @@ h3 {
   color: #333;
   border-left: 4px solid #409eff;
   padding-left: 10px;
+}
+
+.selection-tips {
+  padding: 8px 12px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  border-left: 3px solid #409eff;
 }
 </style>

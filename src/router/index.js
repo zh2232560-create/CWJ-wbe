@@ -69,7 +69,7 @@ const routes = [
     name: 'shippingpage',
     component: () => import('@/views/cwj/shippingpage.vue'),
     meta: {
-      title: '蔡文姬发货页面',
+      title: '蔡文姬发货平台',
       favicon: '/favicon.ico',
     },
   },
@@ -79,7 +79,7 @@ const routes = [
     component: () => import('@/views/cwj/adminpage.vue'),
     props: true,
     meta: {
-      title: '蔡文姬管理员页面',
+      title: '蔡文姬管理员平台',
       favicon: '/favicon.ico',
     },
   },
@@ -89,7 +89,7 @@ const routes = [
     component: () => import('@/views/cwj/purchasepage.vue'),
     props: true,
     meta: {
-      title: '蔡文姬采购页面',
+      title: '蔡文姬采购平台',
       favicon: '/favicon.ico',
     },
   },
@@ -99,7 +99,7 @@ const routes = [
     component: () => import('@/views/cwj/receiptpage.vue'),
     props: true,
     meta: {
-      title: '蔡文姬签收页面',
+      title: '蔡文姬签收平台',
       favicon: '/favicon.ico',
     },
   },
@@ -163,6 +163,16 @@ const routes = [
       favicon: '/favicon.ico',
     },
   },
+  // 404页面路由，需要放在最后
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: () => import('@/views/NotFound.vue'),
+    meta: {
+      title: '页面未找到',
+      favicon: '/favicon.ico',
+    },
+  },
 ]
 
 const router = createRouter({
@@ -189,7 +199,12 @@ router.beforeEach((to, from, next) => {
   // 使用路由配置中的图标，如果没有则使用默认图标
   setFavicon(to.meta.favicon || '/meeting/favicon.ico')
 
-  next()
+  // 如果没有匹配到任何路由，则跳转到404页面
+  if (to.name === 'NotFound') {
+    next()
+  } else {
+    next()
+  }
 })
 
 export default router
