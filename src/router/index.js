@@ -163,6 +163,15 @@ const routes = [
       favicon: '/favicon.ico',
     },
   },
+  {
+    path: '/wxj/report',
+    name: 'Report',
+    component: () => import('@/views/wxj/PillowReport.vue'),
+    meta: {
+      title: '智能枕头报告页面',
+      favicon: '/favicon.ico',
+    },
+  },
   // 404页面路由，需要放在最后
   {
     path: '/:pathMatch(.*)*',
