@@ -3,9 +3,9 @@
     <!-- 新增：使用加载组件 -->
     <loading-mask :visible="isSubmitting" text="正在提交，请等待..." />
     <!-- 顶部标题栏 -->
-    <div class="header-section">
+    <!-- <div class="header-section">
       <h2>足康树检测系统</h2>
-    </div>
+    </div> -->
 
     <!-- 部位信息和进度 -->
     <div class="progress-section">
@@ -74,11 +74,12 @@
     <el-dialog
       v-model="showPreviewDialog"
       :title="`预览 - ${currentPhotoName}`"
-      class="preview-width"
+      class="preview-dialog-wrapper"
       width="80%"
       :close-on-click-modal="false"
       :close-on-press-escape="false"
       :show-close="false"
+      center
     >
       <div class="preview-dialog">
         <div class="preview-image">
@@ -977,23 +978,37 @@ onBeforeUnmount(() => {
 
 .preview-dialog {
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-height: 70vh;
+  overflow-y: auto;
 }
 
 .preview-image {
-  margin-bottom: 30px;
+  margin-bottom: 20px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .preview-image img {
   max-width: 100%;
-  max-height: 300px;
+  max-height: 50vh;
+  height: auto;
+  width: auto;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  object-fit: contain;
 }
 
 .preview-actions {
   display: flex;
   gap: 20px;
   justify-content: center;
+  flex-wrap: wrap;
+  width: 100%;
 }
 
 .completion-dialog {
@@ -1085,13 +1100,29 @@ onBeforeUnmount(() => {
     height: 100%;
   }
 
-  .preview-width {
-    width: 100%;
+  .preview-dialog-wrapper {
+    width: 95% !important;
+    max-width: 95vw !important;
+  }
+
+  .preview-dialog {
+    max-height: 60vh;
+    padding: 0;
+  }
+
+  .preview-image {
+    margin-bottom: 15px;
+  }
+
+  .preview-image img {
+    max-height: 45vh;
+    border-radius: 6px;
   }
 
   .preview-actions {
     flex-direction: column;
     gap: 12px;
+    padding: 0 10px;
   }
 
   .preview-actions .el-button {
@@ -1184,5 +1215,98 @@ onBeforeUnmount(() => {
   .header-section h2 {
     font-size: 16px;
   }
+
+  .preview-dialog-wrapper {
+    width: 98% !important;
+    max-width: 98vw !important;
+    margin: 5px !important;
+  }
+
+  .preview-dialog {
+    max-height: 55vh;
+  }
+
+  .preview-image {
+    margin-bottom: 12px;
+  }
+
+  .preview-image img {
+    max-height: 40vh;
+    border-radius: 4px;
+  }
+
+  .preview-actions {
+    gap: 10px;
+    padding: 0 5px;
+  }
+
+  .preview-actions .el-button {
+    font-size: 14px;
+    padding: 12px 15px;
+  }
+}
+</style>
+
+<style>
+/* 全局样式 - 修复 Element Plus Dialog 在移动端的显示 */
+@media (max-width: 768px) {
+  .preview-dialog-wrapper .el-dialog {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    margin: 5vh auto !important;
+  }
+
+  .preview-dialog-wrapper .el-dialog__header {
+    padding: 15px 15px 10px;
+  }
+
+  .preview-dialog-wrapper .el-dialog__title {
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  .preview-dialog-wrapper .el-dialog__body {
+    padding: 15px;
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .preview-dialog-wrapper .el-dialog {
+    width: 98vw !important;
+    max-width: 98vw !important;
+    margin: 2vh auto !important;
+    border-radius: 8px;
+  }
+
+  .preview-dialog-wrapper .el-dialog__header {
+    padding: 12px 12px 8px;
+  }
+
+  .preview-dialog-wrapper .el-dialog__title {
+    font-size: 14px;
+  }
+
+  .preview-dialog-wrapper .el-dialog__body {
+    padding: 10px;
+    max-height: 65vh;
+  }
+}
+
+/* 确保图片在所有设备上都能正确显示 */
+.preview-dialog-wrapper .preview-image {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.preview-dialog-wrapper .preview-image img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
 }
 </style>

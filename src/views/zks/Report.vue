@@ -477,7 +477,7 @@ watch(
       isLoading.value = true
       fetchReportDetail(newId || '6')
     }
-  }
+  },
 )
 
 // 页面方法（直接声明函数，无需放在 methods 中）
