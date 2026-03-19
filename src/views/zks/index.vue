@@ -31,7 +31,7 @@
         <div class="camera-preview">
           <div v-if="!isCameraActive" class="camera-placeholder">
             <el-icon size="64px" color="#909399"><Camera /></el-icon>
-            <p>请开启摄像头并拍照</p>
+            <p>请点击下方按钮开启摄像头并拍照</p>
           </div>
           <div v-show="isCameraActive" class="camera-active-container">
             <video ref="videoElement" autoplay playsinline class="camera-feed"></video>

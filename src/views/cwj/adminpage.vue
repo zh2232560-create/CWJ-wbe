@@ -13,7 +13,7 @@
       <div class="stats-container">
         <div class="stat-card" @click="goToPage('purchase')">
           <div class="stat-label">订单数</div>
-          <div class="stat-number">{{ 10 }}</div>
+          <div class="stat-number">{{ stats.total_device_count }}</div>
         </div>
         <div class="stat-card" @click="goToPage('shipping')">
           <div class="stat-label">待发货</div>
@@ -309,6 +309,7 @@ export default {
     return {
       // 统计数据
       stats: {
+        total_device_count: 0,
         pending: 0,
         shipping: 0,
         deployed: 0,
@@ -479,11 +480,16 @@ export default {
             productStatusText: device.product_status_text,
           }))
 
-          // 更新统计信息
-          this.stats.pending = deviceResponse.data.statistics.pending_shipment_count
-          this.stats.shipping = deviceResponse.data.statistics.shipped_not_received_count
-          this.stats.deployed = deviceResponse.data.statistics.deployed_count
-          this.stats.error = deviceResponse.data.statistics.exception_count
+          // 更新统计信息（将后端 statistics 映射到前端使用的字段）
+          const statsSource = deviceResponse.data.statistics || {}
+          this.stats.total_device_count = statsSource.total_device_count || 0
+          // 待发货使用 pending_shipment_count，如无则回退到 pending_process_count
+          this.stats.pending =
+            statsSource.pending_shipment_count ?? statsSource.pending_process_count ?? 0
+          // 运输中使用 shipped_not_received_count
+          this.stats.shipping = statsSource.shipped_not_received_count ?? 0
+          this.stats.deployed = statsSource.deployed_count ?? 0
+          this.stats.error = statsSource.exception_count ?? 0
         }
 
         // 处理门店数据
