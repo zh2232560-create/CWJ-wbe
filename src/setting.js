@@ -4,7 +4,13 @@
 // const VUE_APP_API_URL = 'https://www.pkahealth.com/api/v2'
 export const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://www.pkahealth.com/'
 
-export const baseURL = import.meta.env.VITE_API_BASE_URL + '/api/v2'
+const normalizeBaseUrl = (url) => (url || '').replace(/\/+$/, '')
+
+// 开发环境默认走 Vite 代理 (/api/v2)，避免跨域；生产环境使用绝对地址
+export const baseURL = import.meta.env.DEV
+  ? '/api/v2'
+  : `${normalizeBaseUrl(BASE_URL)}/api/v2`
+
 const Setting = {
   // 路由前缀
   routePre: '/admin',

@@ -29,10 +29,10 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: {
         '/api': {
-          target: 'http://127.0.0.1:5000',
+          target: 'http://localhost:3000',
           changeOrigin: true,
-          // 不需要 rewrite，直接转发即可，后端已經在 /api/v2 路徑处理
-          // rewrite: (path) => path.replace(/^\/api/, '/api/v2'),
+          rewrite: (path) => path.replace(/^\/api/, '/api'),  // Keep /api prefix intact
+          // 蔡文姬 AI 助手后端服务运行在 3000 端口
         },
       },
     },

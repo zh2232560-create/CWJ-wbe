@@ -252,7 +252,6 @@
 
 <script>
 import cwjAPI from '@/api/cwj'
-import { dayOrDaysToDate } from 'element-plus'
 
 export default {
   name: 'CaiWenjiProcurementPlatform',
@@ -592,7 +591,7 @@ export default {
       try {
         // 获取产品列表
         const response = await cwjAPI.getproductlist({ page: 1, limit: 100 })
-        if (response.status === 200) {
+        if (response && response.status === 200) {
           // 根据实际返回的数据结构构建设备选项
           this.deviceOptions = response.data.list.map((product) => ({
             value: product.id,
@@ -606,21 +605,32 @@ export default {
             const effectivate = product.specs?.effectivate || '暂无功能描述'
             this.deviceSpecs[product.id] = `型号: ${model} | 功能: ${effectivate}`
           })
+        } else {
+          console.warn('获取产品列表返回异常状态:', response)
+          this.showNotification('产品列表加载失败，请稍后重试', 'error')
         }
       } catch (error) {
         console.error('获取产品列表失败:', error)
-        this.showNotification('获取产品列表失败', 'error')
+        // 不中断页面加载，只显示通知
+        this.showNotification('无法加载产品列表，请检查网络连接', 'error')
+        // 设置默认空选项
+        this.deviceOptions = []
       }
     },
   },
 
   async mounted() {
-    this.createParticles()
-    this.setMinDates()
-    this.loadDraft()
+    try {
+      this.createParticles()
+      this.setMinDates()
+      this.loadDraft()
 
-    // 初始化设备选项
-    await this.initializeDeviceOptions()
+      // 初始化设备选项
+      await this.initializeDeviceOptions()
+    } catch (error) {
+      console.error('页面初始化失败:', error)
+      this.showNotification('页面加载部分失败，但您仍可继续操作', 'error')
+    }
   },
 }
 </script>

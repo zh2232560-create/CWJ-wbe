@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { h } from 'vue'
 
 const routes = [
   {
@@ -75,7 +76,7 @@ const routes = [
   },
   {
     path: '/cwj/admin',
-    name: 'adminedit',
+    name: 'cwjAdmin',
     component: () => import('@/views/cwj/adminpage.vue'),
     props: true,
     meta: {
@@ -176,7 +177,10 @@ const routes = [
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
-    component: () => import('@/views/NotFound.vue'),
+    component: {
+      displayName: 'NotFound',
+      render: () => h('div', { style: 'text-align: center; padding: 50px;' }, h('h1', '404 - 页面未找到'))
+    },
     meta: {
       title: '页面未找到',
       favicon: '/favicon.ico',

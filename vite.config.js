@@ -10,8 +10,9 @@ export default defineConfig(({ mode }) => {
   // 加载环境变量
   const env = loadEnv(mode, process.cwd(), '')
 
-  // 根据环境决定API基础URL
-  const apiBaseUrl = mode === 'development' ? 'http:///crmebapi.com' : 'https://www.pkahealth.com'
+  // 根据环境决定API基础URL（优先使用 .env.* 的 VITE_API_BASE_URL）
+  const apiBaseUrl = env.VITE_API_BASE_URL || (mode === 'development' ? 'http://127.0.0.1:5000/' : 'https://www.pkahealth.com/')
+  const apiTarget = apiBaseUrl.replace(/\/+$/, '')
 
   return {
     base: '/meeting/',
@@ -28,9 +29,10 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: {
         '/api': {
-          target: apiBaseUrl,
+          target: 'http://127.0.0.1:5000',
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, '/api/v2'),
+          // 不需要 rewrite，直接转发即可，后端已經在 /api/v2 路徑处理
+          // rewrite: (path) => path.replace(/^\/api/, '/api/v2'),
         },
       },
     },

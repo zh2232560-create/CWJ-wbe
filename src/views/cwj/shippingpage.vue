@@ -622,14 +622,21 @@ const resetForm = (formEl) => {
 
 // 组件挂载时设置默认发货时间为当前时间并加载数据
 onMounted(() => {
-  const now = new Date()
-  shippingForm.shipTime = formatDate(now)
+  try {
+    const now = new Date()
+    shippingForm.shipTime = formatDate(now)
 
-  // 初始化数据
-  initializeData()
+    // 初始化数据
+    initializeData().catch((error) => {
+      console.error('初始化数据失败:', error)
+      // 不中断页面显示
+    })
 
-  // 移除事件监听器
-  window.removeEventListener('resize', checkMobile)
+    // 移除事件监听器
+    window.removeEventListener('resize', checkMobile)
+  } catch (error) {
+    console.error('onMounted 执行出错:', error)
+  }
 })
 
 // 格式化日期时间

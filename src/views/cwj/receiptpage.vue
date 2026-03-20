@@ -271,8 +271,13 @@ export default {
     }
   },
   async mounted() {
-    // 初始化数据
-    await this.initializeData()
+    try {
+      // 初始化数据
+      await this.initializeData()
+    } catch (error) {
+      console.error('页面初始化失败:', error)
+      // 即使初始化失败也显示页面，用户可以手动操作
+    }
   },
   methods: {
     // 初始化数据
@@ -288,12 +293,15 @@ export default {
           limit: 40,
         })
 
-        if (storeResponse.status === 200) {
+        if (storeResponse && storeResponse.status === 200 && storeResponse.data?.list) {
           this.stores = storeResponse.data.list.map((store) => ({
             id: store.store_id,
             name: store.store_name,
             code: store.store_code,
           }))
+        } else {
+          console.warn('获取门店列表返回异常:', storeResponse)
+          this.stores = []
         }
 
         // 设置当前时间
@@ -304,6 +312,8 @@ export default {
         this.formData.receiveTime = localISOTime
       } catch (error) {
         console.error('初始化数据失败:', error)
+        // 继续运行，不中断页面
+        this.stores = []
       }
     },
 
