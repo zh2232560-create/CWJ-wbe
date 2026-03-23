@@ -1,0 +1,205 @@
+version: '3.8'
+
+# ============================================================================
+# 蔡文姬智能管理系统 - Docker Compose 配置
+# 包含：前端、后端、数据库、日志、缓存等完整配置
+# ============================================================================
+
+services:
+
+  # ========================================================================
+  # 后端 API 服务
+  # ========================================================================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cwj-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Node.js 配置
+      NODE_ENV: production
+      NODE_OPTIONS: "--max-old-space-size=512"
+      
+      # 应用配置
+      PORT: 3000
+      LOG_LEVEL: info
+      
+      # AI 模型配置（必须设置）
+      DOUBAO_API_KEY: ${DOUBAO_API_KEY:-your_api_key_here}
+      DOUBAO_MODEL_ID: doubao-seed-1-6-251015
+      DOUBAO_API_URL: https://ark.cn-beijing.volces.com/api/v3
+      
+      # 数据库配置
+      DB_PATH: /app/db/chat.db
+      
+      # 日志配置
+      LOG_DIR: /app/logs
+    
+    # 数据卷
+    volumes:
+      # 数据库持久化
+      - cwj_db_data:/app/db
+      # 日志持久化
+      - cwj_logs:/app/logs
+      # 数据文件（用于 AI 上下文）
+      - ./data:/app/data:ro
+    
+    # 网络
+    networks:
+      - cwj-network
+    
+    # 依赖关系
+    depends_on:
+      - nginx
+    
+    # 日志驱动
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+    
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '1'
+          memory: 512M
+
+  # ========================================================================
+  # Nginx 反向代理（前端 + API 代理）
+  # ========================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: cwj-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Nginx 配置
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./conf.d:/etc/nginx/conf.d:ro
+      
+      # 前端静态文件
+      - ./dist:/usr/share/nginx/html:ro
+      
+      # SSL 证书（需手动配置或 Let's Encrypt）
+      - cwj_ssl_certs:/etc/nginx/certs:ro
+      
+      # 日志
+      - cwj_nginx_logs:/var/log/nginx
+    
+    networks:
+      - cwj-network
+    
+    depends_on:
+      - backend
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+    
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+  # ========================================================================
+  # 可选：Redis 缓存（用于会话缓存）
+  # ========================================================================
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: cwj-redis
+  #   restart: unless-stopped
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - cwj_redis_data:/data
+  #   networks:
+  #     - cwj-network
+  #   command: redis-server --appendonly yes
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+  # ========================================================================
+  # 可选：PostgreSQL 数据库（如果需要替换 SQLite）
+  # ========================================================================
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: cwj-postgres
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_DB: cwj_db
+  #     POSTGRES_USER: cwj_user
+  #     POSTGRES_PASSWORD: ${DB_PASSWORD:-your_secure_password}
+  #   volumes:
+  #     - cwj_postgres_data:/var/lib/postgresql/data
+  #     - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+  #   networks:
+  #     - cwj-network
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U cwj_user"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+  # ========================================================================
+  # 可选：Prometheus 监控
+  # ========================================================================
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   container_name: cwj-prometheus
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+  #     - cwj_prometheus_data:/prometheus
+  #   command:
+  #     - '--config.file=/etc/prometheus/prometheus.yml'
+  #     - '--storage.tsdb.path=/prometheus'
+  #   ports:
+  #     - "9090:9090"
+  #   networks:
+  #     - cwj-network
+
+# ============================================================================
+# 数据卷定义
+# ============================================================================
+volumes:
+  cwj_db_data:
+    driver: local
+  cwj_logs:
+    driver: local
+  cwj_ssl_certs:
+    driver: local
+  cwj_nginx_logs:
+    driver: local
+  # cwj_redis_data:
+  #   driver: local
+  # cwj_postgres_data:
+  #   driver: local
+  # cwj_prometheus_data:
+  #   driver: local
+
+# ============================================================================
+# 网络定义
+# ============================================================================
+networks:
+  cwj-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

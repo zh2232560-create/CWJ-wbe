@@ -281,6 +281,223 @@ removeToken()
 npm run build
 # 输出到 dist/ 目录
 ```
+
+## 🐳 Docker 容器化部署（推荐）
+
+Docker 是最推荐的部署方式，提供一致的运行环境、自动化部署和灵活的扩展。
+
+### 快速开始
+
+#### 前置要求
+- Docker >= 20.10
+- Docker Compose >= 2.0
+
+#### 1️⃣ 配置环境变量
+
+```bash
+# 复制 Docker 环境变量范例
+cp .env.docker .env
+
+# 编辑 .env 文件，设置必要的配置
+vi .env
+# 至少需要设置：
+# DOUBAO_API_KEY=your_api_key_here
+```
+
+#### 2️⃣ 启动服务
+
+**Linux/macOS**:
+```bash
+# 给脚本添加执行权限
+chmod +x docker-start.sh
+
+# 快速启动
+./docker-start.sh
+```
+
+**Windows**:
+```batch
+# 双击运行或在 PowerShell 中执行
+docker-start.bat
+```
+
+**手动启动**:
+```bash
+# 构建镜像
+docker-compose build
+
+# 启动容器
+docker-compose up -d
+
+# 查看状态
+docker-compose ps
+
+# 查看日志
+docker-compose logs -f backend
+```
+
+#### 3️⃣ 验证部署
+
+```bash
+# 检查服务健康状态
+curl http://localhost:3000/health
+
+# 访问应用
+# 前端: http://localhost
+# 后端 API: http://localhost:3000
+```
+
+### 💡 Docker 部署优势
+
+✅ **一致的环境** - 开发、测试、生产环境完全一致  
+✅ **快速部署** - 无需复杂配置，一键启动  
+✅ **自动化** - docker-compose 自动管理依赖关系  
+✅ **隔离运行** - 容器对主机系统无污染  
+✅ **灵活扩展** - 轻松添加缓存、数据库等服务  
+✅ **内置监控** - 健康检查、日志管理等功能  
+
+### 📋 项目包含的 Docker 文件
+
+| 文件 | 描述 |
+|------|------|
+| `Dockerfile` | 多阶段构建，优化镜像大小 |
+| `docker-compose.yml` | 完整的服务编排配置 |
+| `.dockerignore` | 排除不必要的文件，加快构建 |
+| `nginx.conf` | Nginx 反向代理配置 |
+| `conf.d/proxy_headers.conf` | 代理头配置 |
+| `.env.docker` | Docker 环境变量范例 |
+| `docker-start.sh` | Linux/macOS 快速启动脚本 |
+| `docker-start.bat` | Windows 快速启动脚本 |
+
+### 🛠️ 常用 Docker 命令
+
+```bash
+# 查看容器状态
+docker-compose ps
+
+# 查看日志
+docker-compose logs backend      # 仅看后端日志
+docker-compose logs -f           # 持续显示所有日志
+
+# 进入容器执行命令
+docker-compose exec backend sh   # 进入后端容器
+docker-compose exec backend npm run db:init  # 在容器内初始化数据库
+
+# 重启服务
+docker-compose restart           # 重启所有服务
+docker-compose restart backend   # 仅重启后端
+
+# 停止服务
+docker-compose stop              # 停止（保留数据）
+docker-compose down              # 停止并删除容器
+
+# 完全清理（删除所有数据）
+docker-compose down -v
+
+# 查看镜像大小
+docker images
+
+# 查看容器资源使用情况
+docker stats
+
+# 查看网络
+docker network ls
+docker network inspect cwj-network
+```
+
+### 📊 Docker Compose 服务
+
+默认配置包含以下服务：
+
+| 服务 | 端口 | 描述 |
+|------|------|------|
+| `backend` | 3000 | Node.js AI 助手后端 |
+| `nginx` | 80/443 | 前端静态文件 + API 代理 |
+
+**可选服务**（取消注释 docker-compose.yml 中的相应部分）：
+- `redis` - 缓存和会话存储
+- `postgres` - PostgreSQL 数据库（替代 SQLite）
+- `prometheus` - 监控和指标收集
+
+### 🔐 生产环境优化
+
+#### 1️⃣ 启用 HTTPS
+
+```bash
+# 使用 Let's Encrypt 获取免费证书
+sudo certbot certonly --standalone -d your.domain.com
+
+# 配置 nginx.conf 中的 SSL 部分
+# 证书路径：/etc/letsencrypt/live/your.domain.com/
+```
+
+#### 2️⃣ 数据库备份和恢复
+
+```bash
+# 备份 SQLite 数据库
+docker-compose exec backend sqlite3 /app/db/chat.db ".backup '/backup/chat_$(date +%Y%m%d_%H%M%S).db'"
+
+# 或使用宿主机备份
+docker cp cwj-backend:/app/db/chat.db ./backups/chat_backup.db
+
+# 恢复数据库
+docker cp ./backups/chat_backup.db cwj-backend:/app/db/chat.db
+docker-compose restart backend
+```
+
+#### 3️⃣ 日志管理
+
+```bash
+# 查看容器日志大小
+docker exec cwj-backend du -sh /app/logs
+
+# 清理日志
+docker exec cwj-backend rm -f /app/logs/*.log
+
+# 配置日志轮转（在 docker-compose.yml 中已配置）
+# 日志文件：100MB，保留 10 个文件
+```
+
+### 🔧 故障排查
+
+| 问题 | 症状 | 解决方案 |
+|------|------|--------|
+| 容器无法启动 | `docker-compose ps` 显示 Exit | 查看日志 `docker-compose logs backend` |
+| API 502 错误 | 请求返回 502 | 检查后端是否运行 `docker-compose ps` |
+| 数据更新后没有刷新 | 旧数据仍然显示 | 重启容器 `docker-compose restart backend` |
+| 磁盘空间满 | Docker 无法启动 | 清理日志和镜像 `docker system prune -a` |
+| 网络连接失败 | 容器间无法通信 | 检查网络 `docker network inspect cwj-network` |
+| 权限拒绝错误 | Permission denied | 检查文件夹权限，重建镜像 `docker-compose build --no-cache` |
+
+### 📈 性能优化
+
+#### 1️⃣ 镜像优化
+
+```bash
+# 查看构建过程中的缓存
+docker-compose build --progress=plain
+
+# 清理未使用的镜像
+docker image prune -a
+
+# 检查镜像大小
+docker images | grep cwj
+```
+
+#### 2️⃣ 容器资源限制
+
+已在 `docker-compose.yml` 中配置：
+```yaml
+deploy:
+  resources:
+    limits:
+      cpus: '2'
+      memory: 1G
+    reservations:
+      cpus: '1'
+      memory: 512M
+```
+
 ## 📦 服务器部署指南
 
 ### 前置要求
