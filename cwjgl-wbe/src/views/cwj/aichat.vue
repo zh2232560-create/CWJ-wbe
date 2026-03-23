@@ -50,8 +50,8 @@
             </div>
             <!-- 正常内容 -->
             <div v-else>
-              <div v-if="msg.role === 'ai'" class="markdown-body" v-html="msg.content"></div>
-              <div v-else>{{ msg.content }}</div>
+              <div v-if="msg.role === 'ai' || msg.role === 'assistant'" class="ai-response" v-html="formatMarkdown(msg.content)"></div>
+              <div v-else class="user-response">{{ msg.content }}</div>
               
               <!-- 如果 AI 回复包含图表 -->
               <div v-if="msg.chart && msg.status === 'success'" class="chart-container" :id="'chart-' + msg.id"></div>
@@ -65,8 +65,8 @@
 
               <!-- 数据来源 -->
               <div v-if="msg.sources && msg.sources.length > 0" class="data-sources">
-                <span class="source-label">数据来源：</span>
-                <span v-for="(source, i) in msg.sources" :key="i" class="source-tag">{{ source }}</span>
+                <span class="source-label">📊 数据来源：</span>
+                <span v-for="(source, i) in msg.sources" :key="i" class="source-tag">{{ typeof source === 'object' ? source.name : source }}</span>
               </div>
             </div>
           </div>
@@ -310,6 +310,123 @@ export default {
           container.scrollTop = container.scrollHeight;
         }
       });
+    },
+
+    formatMarkdown(text) {
+      if (!text) return '';
+      
+      let html = text;
+      
+      // 处理表格 (| col | col |)
+      html = this.parseTable(html);
+      
+      // 处理代码块 ```code```
+      html = html.replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>');
+      
+      // 处理内联代码 `code` （避免与加粗冲突）
+      html = html.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
+      
+      // 处理加粗 **text** 或 __text__（需要在其他 * 或 _ 处理前）
+      html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+      
+      // 处理斜体 *text* 或 _text_
+      html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+      html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
+      
+      // 处理标题 # 标题（需要在其他处理前）
+      html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+      html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+      html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+      
+      // 处理列表 - item 或 * item
+      html = html.replace(/^\s*[-*] (.+)$/gm, '<li>$1</li>');
+      html = html.replace(/(<li>[\s\S]*?<\/li>)/s, '<ul>$1</ul>');
+      html = html.replace(/<\/li>\s*<li>/g, '</li><li>');
+      
+      // 处理换行符，保留段落（跳过已处理的标签）
+      const lines = html.split('\n');
+      let processed = [];
+      let inTag = false;
+      
+      for (let line of lines) {
+        const trimmed = line.trim();
+        // 如果是标签行，直接添加
+        if (trimmed.match(/^<(table|ul|pre|h[1-3]|li)/)) {
+          processed.push(line);
+          inTag = true;
+        } else if (trimmed.match(/(table|ul|pre|h[1-3]|li)>$/)) {
+          processed.push(line);
+          inTag = false;
+        } else if (inTag) {
+          processed.push(line);
+        } else if (trimmed) {
+          processed.push(trimmed);
+        } else {
+          // 空行作为段落分隔
+          processed.push('__PARAGRAPH_BREAK__');
+        }
+      }
+      
+      html = processed.join('\n');
+      html = html.replace(/([^<>])\n([^<])/g, '$1<br/>$2');
+      
+      // 清理多余的 <br/>
+      html = html.replace(/<br\/>\s*<(table|ul|pre|h[1-3])/g, '<$1');
+      html = html.replace(/(table|ul|pre|h[1-3])>\s*<br\/>/g, '$1>');
+      
+      return html.replace(/__PARAGRAPH_BREAK__/g, '<br/>');
+    },
+
+    parseTable(text) {
+      const tableRegex = /\|.+\|[\s\S]*?\n(\|[-:\s|]+\|)[\s\S]*?(?=\n\n|\n[^|]|$)/g;
+      return text.replace(tableRegex, (match) => {
+        const lines = match.split('\n').filter(l => l.trim());
+        if (lines.length < 3) return match;
+        
+        const isHeaderSeparator = (line) => /^\|[-:\s|]+\|$/.test(line);
+        const headerIndex = lines.findIndex(isHeaderSeparator);
+        if (headerIndex === -1) return match;
+        
+        const parseRow = (row) => {
+          const cells = row.split('|')
+            .map(cell => cell.trim())
+            .filter(cell => cell !== '' && cell !== '-' && !cell.match(/^[-:]+$/));
+          
+          return cells.map(cell => {
+            // 处理单元格内的换行
+            const cellHtml = cell
+              .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+              .replace(/`([^`]+)`/g, '<code>$1</code>');
+            return `<td>${cellHtml}</td>`;
+          }).join('');
+        };
+        
+        let html = '<table>';
+        
+        // 表头
+        if (headerIndex > 0) {
+          const headerCells = lines[0].split('|')
+            .map(c => c.trim())
+            .filter(c => c && c !== '-' && !c.match(/^[-:]+$/));
+          html += '<thead><tr>';
+          headerCells.forEach(cell => {
+            html += `<th>${cell}</th>`;
+          });
+          html += '</tr></thead>';
+        }
+        
+        // 表体
+        html += '<tbody>';
+        for (let i = headerIndex + 1; i < lines.length; i++) {
+          if (lines[i].trim() && !isHeaderSeparator(lines[i])) {
+            html += '<tr>' + parseRow(lines[i]) + '</tr>';
+          }
+        }
+        html += '</tbody></table>';
+        
+        return html;
+      });
     }
   }
 };
@@ -416,8 +533,9 @@ export default {
 .chat-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 40px 15%;
+  padding: 30px 5%;
   padding-bottom: 20px;
+  max-width: 100%;
 }
 
 .welcome-screen {
@@ -445,6 +563,8 @@ export default {
   gap: 15px;
   margin-bottom: 20px;
   animation: fadeIn 0.3s ease-in;
+  width: 100%;
+  min-width: 0;
 }
 
 .message-bubble.user {
@@ -476,13 +596,17 @@ export default {
 }
 
 .content {
-  max-width: 65%;
+  max-width: 90%;
+  min-width: 0;
   padding: 12px 16px;
   border-radius: 12px;
   background: #fff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   line-height: 1.6;
   word-break: break-word;
+  overflow-wrap: break-word;
+  overflow-x: auto;
+  overflow-y: visible;
 }
 
 .message-bubble.user .content {
@@ -574,12 +698,158 @@ export default {
 
 .source-label {
   font-weight: bold;
+  color: #151932;
+  white-space: nowrap;
 }
 
 .source-tag {
-  background: #f0f2f5;
-  padding: 2px 8px;
+  background: linear-gradient(135deg, #e8f4f8, #f0f8ff);
+  padding: 4px 10px;
   border-radius: 12px;
+  border: 1px solid #a8d8ea;
+  color: #0066cc;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* Markdown 渲染样式 */
+.ai-response {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  overflow-x: hidden;
+}
+
+.ai-response h1,
+.ai-response h2,
+.ai-response h3 {
+  margin: 12px 0 8px 0;
+  font-weight: 600;
+  color: #151932;
+}
+
+.ai-response h1 {
+  font-size: 18px;
+  border-bottom: 2px solid #007bff;
+  padding-bottom: 6px;
+}
+
+.ai-response h2 {
+  font-size: 16px;
+  color: #0056b3;
+}
+
+.ai-response h3 {
+  font-size: 14px;
+  color: #0080ff;
+}
+
+.ai-response p {
+  margin: 6px 0;
+  line-height: 1.6;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.ai-response strong {
+  color: #dc3545;
+  font-weight: 600;
+}
+
+.ai-response em {
+  color: #6c757d;
+  font-style: italic;
+}
+
+.ai-response ul {
+  margin: 8px 0;
+  padding-left: 20px;
+  list-style-type: disc;
+  width: 100%;
+}
+
+.ai-response li {
+  margin: 4px 0;
+  line-height: 1.5;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.ai-response code {
+  background: #f8f9fa;
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: #e83e8c;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.ai-response .inline-code {
+  background: #f0f2f5;
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: #dc3545;
+}
+
+.ai-response pre {
+  background: #f8f9fa;
+  border-left: 3px solid #007bff;
+  padding: 12px;
+  border-radius: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin: 8px 0;
+  max-width: 100%;
+  font-size: 12px;
+  word-break: break-word;
+}
+
+.ai-response pre code {
+  background: none;
+  color: #151932;
+  padding: 0;
+  border-radius: 0;
+}
+
+/* 表格样式 */
+.ai-response table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0;
+  font-size: 13px;
+  display: block;
+  overflow-x: auto;
+}
+
+.ai-response table th,
+.ai-response table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+.ai-response table th {
+  background: #f0f8ff;
+  font-weight: 600;
+  color: #0066cc;
+}
+
+.ai-response table tr:nth-child(even) {
+  background: #f9f9f9;
+}
+
+.ai-response table tr:hover {
+  background: #f0f0f0;
+}
+
+.user-response {
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 .chat-footer {

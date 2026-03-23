@@ -281,7 +281,405 @@ removeToken()
 npm run build
 # 输出到 dist/ 目录
 ```
+## 📦 服务器部署指南
 
+### 前置要求
+- Linux 服务器（推荐 Ubuntu 20.04+ 或 CentOS 7+）
+- Node.js >= 16.0
+- npm >= 7.0
+- Nginx（用于反向代理）
+- PM2（用于进程管理，可选但推荐）
+
+### 1️⃣ 服务器环境准备
+
+#### 1.1 安装 Node.js
+```bash
+# 使用 NVM（Node Version Manager）
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+source ~/.bashrc
+nvm install 18   # 推荐使用 Node 18
+nvm use 18
+node --version   # 验证
+npm --version
+```
+
+#### 1.2 安装 PM2（进程管理工具）
+```bash
+npm install -g pm2
+pm2 --version
+
+# 启用开机自启
+pm2 startup
+pm2 save
+```
+
+#### 1.3 安装 Nginx
+```bash
+# Ubuntu/Debian
+sudo apt update
+sudo apt install nginx
+
+# CentOS/RHEL
+sudo yum install nginx
+
+# 启动 Nginx
+sudo systemctl start nginx
+sudo systemctl enable nginx   # 开机自启
+sudo systemctl status nginx   # 检查状态
+```
+
+### 2️⃣ 部署后端服务
+
+#### 2.1 上传项目文件
+```bash
+# 在本地执行
+scp -r ./cwjgl-wbe/ user@your_server_ip:/home/user/
+
+# 或使用 Git
+ssh user@your_server_ip
+cd /home/user/
+git clone https://your-git-repo/cwjgl-wbe.git
+cd cwjgl-wbe
+```
+
+#### 2.2 配置环境变量
+```bash
+# 在服务器上
+cd /home/user/cwjgl-wbe
+cp .env.example .env  # 或 vi .env 手动编辑
+
+# .env 文件内容（需根据实际情况修改）
+DOUBAO_API_KEY=your_api_key_here
+DOUBAO_MODEL_ID=doubao-seed-1-6-251015
+DOUBAO_API_URL=https://ark.cn-beijing.volces.com/api/v3
+NODE_ENV=production
+PORT=3000
+DB_PATH=./db/chat.db
+```
+
+#### 2.3 安装依赖并初始化数据库
+```bash
+npm install --production  # 仅安装生产依赖
+npm run db:init          # 初始化 SQLite 数据库
+```
+
+#### 2.4 使用 PM2 启动后端服务
+```bash
+# 启动
+pm2 start server.js --name cwj-backend
+
+# 查看日志
+pm2 logs cwj-backend
+
+# 列出所有进程
+pm2 list
+
+# 重启
+pm2 restart cwj-backend
+
+# 停止
+pm2 stop cwj-backend
+```
+
+#### 2.5 PM2 配置文件（推荐）
+创建 `ecosystem.config.js` 文件：
+```javascript
+module.exports = {
+  apps: [
+    {
+      name: 'cwj-backend',
+      script: './server.js',
+      instances: 'max',  // 自动选择 CPU 核心数
+      exec_mode: 'cluster',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3000
+      },
+      error_file: './logs/err.log',
+      out_file: './logs/out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss',
+      merge_logs: true,
+      watch: false,
+      ignore_watch: ['node_modules', 'db', 'logs'],
+      max_memory_restart: '500M'
+    }
+  ]
+};
+```
+
+启动：
+```bash
+pm2 start ecosystem.config.js
+pm2 save
+```
+
+### 3️⃣ 部署前端应用
+
+#### 3.1 构建前端
+```bash
+# 在本地或服务器上都可以
+npm run build      # 生成 dist/ 目录
+```
+
+#### 3.2 上传前端文件
+```bash
+# 方式 1：直接上传 dist 目录
+scp -r ./dist/ user@your_server_ip:/home/user/cwj-frontend/
+
+# 方式 2：在服务器上构建
+ssh user@your_server_ip
+cd /home/user/cwjgl-wbe
+npm run build
+```
+
+#### 3.3 配置 Nginx
+编辑 Nginx 配置文件：
+```bash
+sudo vi /etc/nginx/sites-available/default
+# 或 CentOS: sudo vi /etc/nginx/conf.d/default.conf
+```
+
+添加以下配置：
+```nginx
+upstream cwj_backend {
+    server 127.0.0.1:3000;
+    keepalive 64;
+}
+
+server {
+    listen 80;
+    server_name your.domain.com;  # 改为你的域名或 IP
+    
+    # 重定向 HTTP 到 HTTPS（可选）
+    # return 301 https://$server_name$request_uri;
+    
+    # 前端静态文件
+    location / {
+        root /home/user/cwj-frontend;  # 改为实际 dist 目录路径
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
+    
+    # 后端 API 代理
+    location /api/ {
+        proxy_pass http://cwj_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        
+        # 增加超时时间（支持长连接）
+        proxy_read_timeout 120s;
+        proxy_connect_timeout 120s;
+        proxy_send_timeout 120s;
+    }
+    
+    # 健康检查
+    location /health {
+        proxy_pass http://cwj_backend;
+    }
+    
+    # 日志
+    access_log /var/log/nginx/cwj-access.log;
+    error_log /var/log/nginx/cwj-error.log;
+}
+```
+
+#### 3.4 验证并重启 Nginx
+```bash
+# 测试配置
+sudo nginx -t
+
+# 重新加载配置
+sudo systemctl reload nginx
+
+# 或完全重启
+sudo systemctl restart nginx
+```
+
+### 4️⃣ SSL/HTTPS 配置（重要）
+
+#### 4.1 使用 Let's Encrypt 获取免费证书
+```bash
+# 安装 Certbot
+sudo apt install certbot python3-certbot-nginx
+
+# 自动获取和配置证书
+sudo certbot --nginx -d your.domain.com
+
+# 自动续期（证书在 /etc/letsencrypt/live/ 目录）
+sudo systemctl enable certbot.timer
+sudo systemctl start certbot.timer
+```
+
+#### 4.2 手动 SSL 配置
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name your.domain.com;
+    
+    ssl_certificate /path/to/your/certificate.crt;
+    ssl_certificate_key /path/to/your/private.key;
+    
+    # SSL 优化配置
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+    
+    # ... 其他配置同上 ...
+}
+
+# HTTP 重定向到 HTTPS
+server {
+    listen 80;
+    server_name your.domain.com;
+    return 301 https://$server_name$request_uri;
+}
+```
+
+### 5️⃣ 数据库备份和恢复
+
+#### 5.1 备份数据库
+```bash
+# 定期备份脚本 (backup.sh)
+#!/bin/bash
+BACKUP_DIR="/home/user/backups"
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+sqlite3 /home/user/cwjgl-wbe/db/chat.db ".backup '${BACKUP_DIR}/chat_${TIMESTAMP}.db'"
+echo "Backup completed: chat_${TIMESTAMP}.db"
+
+# 设置定时备份（每天凌晨 2 点）
+crontab -e
+# 添加: 0 2 * * * /home/user/cwjgl-wbe/backup.sh
+```
+
+#### 5.2 恢复数据库
+```bash
+# 恢复最新备份
+cp /home/user/backups/chat_TIMESTAMP.db /home/user/cwjgl-wbe/db/chat.db
+pm2 restart cwj-backend
+```
+
+### 6️⃣ 监控和维护
+
+#### 6.1 查看服务状态
+```bash
+# 查看后端服务
+pm2 list
+pm2 logs cwj-backend
+
+# 查看 Nginx 状态
+sudo systemctl status nginx
+sudo tail -f /var/log/nginx/cwj-access.log
+sudo tail -f /var/log/nginx/cwj-error.log
+
+# 查看数据库
+sqlite3 /home/user/cwjgl-wbe/db/chat.db ".tables"
+```
+
+#### 6.2 性能监控
+```bash
+# 安装 PM2 监控
+pm2 install pm2-auto-pull
+pm2 start ecosystem.config.js
+
+# 使用 PM2 Plus（可选联网服务）
+pm2 link
+```
+
+#### 6.3 日志轮转（防止日志文件过大）
+```bash
+# 安装日志轮转
+sudo apt install logrotate
+
+# 创建配置 /etc/logrotate.d/cwj
+/home/user/cwjgl-wbe/logs/*.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    notifempty
+    create 0640 nobody nobody
+    sharedscripts
+    postrotate
+        pm2 reload cwj-backend > /dev/null 2>&1 || true
+    endscript
+}
+```
+
+### 7️⃣ 完整部署检查清单
+
+部署完成后，按照以下清单验证：
+
+- [ ] Node.js 已安装 (`node -v`)
+- [ ] PM2 已安装且后端服务正在运行 (`pm2 list`)
+- [ ] 数据库已初始化 (`ls -la db/chat.db`)
+- [ ] .env 文件已配置（包含 API Key）
+- [ ] Nginx 已启动且配置正确 (`sudo nginx -t`)
+- [ ] 前端可以访问 (`curl http://your.domain.com`)
+- [ ] 后端 API 可以响应 (`curl http://your.domain.com/health`)
+- [ ] SSL 证书已配置并有效（HTTPS 可访问）
+- [ ] 日志文件位置正确
+- [ ] 备份脚本已设置
+- [ ] 开机自启已配置 (`pm2 startup` 和 `pm2 save`)
+
+### 8️⃣ 常见问题排查
+
+| 问题 | 症状 | 解决方案 |
+|------|------|--------|
+| 后端无法启动 | PM2 显示 error | 检查 .env 文件，查看日志 `pm2 logs` |
+| API 502 Bad Gateway | Nginx 错误 | 检查后端是否运行，检查代理地址 |
+| 前端加载失败 | 404 Not Found | 确认 dist 目录路径，检查 Nginx 配置 |
+| 数据库锁定 | SQLite locked error | 重启后端服务，检查其他进程占用 |
+| SSL 证书过期 | HTTPS 警告 | 运行 `sudo certbot renew --dry-run` |
+
+### 9️⃣ 更新部署
+
+当代码有更新时：
+```bash
+# 方法 1：使用 Git 更新
+cd /home/user/cwjgl-wbe
+git pull origin main
+npm install --production
+npm run build
+sudo systemctl reload nginx
+pm2 restart cwj-backend
+
+# 方法 2：使用 PM2 自动拉取（需要配置）
+pm2 install pm2-auto-pull
+```
+
+### 🔟 性能优化建议
+
+#### 10.1 Nginx 优化
+```nginx
+# /etc/nginx/nginx.conf
+worker_processes auto;
+worker_connections 2048;
+keepalive_timeout 65;
+client_max_body_size 20M;
+
+gzip on;
+gzip_types text/plain text/css application/json application/javascript;
+gzip_min_length 1000;
+```
+
+#### 10.2 Node.js 优化
+```bash
+# 增加文件句柄限制
+ulimit -n 65536
+
+# 配置 /etc/security/limits.conf
+* soft nofile 65536
+* hard nofile 65536
+
+# PM2 配置中增加实例数
+instances: 'max'  # 自动使用所有 CPU 核心
+```
 ### 部署建议
 ```
 nginx 配置示例：
