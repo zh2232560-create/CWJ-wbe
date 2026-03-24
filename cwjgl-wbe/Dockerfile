@@ -10,8 +10,7 @@ WORKDIR /app
 
 # 安装依赖（复用缓存层）
 COPY package*.json ./
-RUN npm ci --only=production && \
-    npm ci --only=development
+RUN npm ci
 
 # 复制源代码
 COPY src/ ./src/

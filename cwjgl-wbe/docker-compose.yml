@@ -35,6 +35,9 @@ services:
       # 数据库配置
       DB_PATH: /app/db/chat.db
       
+      # 业务接口配置（指向外部服务）
+      CWJ_API_BASE: ${CWJ_API_BASE:-http://host.docker.internal:8080/api}
+      
       # 日志配置
       LOG_DIR: /app/logs
     
@@ -50,10 +53,6 @@ services:
     # 网络
     networks:
       - cwj-network
-    
-    # 依赖关系
-    depends_on:
-      - nginx
     
     # 日志驱动
     logging:

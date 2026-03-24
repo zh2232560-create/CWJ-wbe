@@ -95,8 +95,8 @@ const DOUBAO_API_KEY = process.env.DOUBAO_API_KEY || process.env.ARK_API_KEY || 
 const DOUBAO_API_URL = 'https://ark.cn-beijing.volces.com/api/v3';
 const DOUBAO_MODEL_ID = 'doubao-seed-1-6-251015';  // Updated: correct model ID from official example
 
-// Business API endpoints (mock data source)
-const CWJ_API_BASE = 'http://localhost:8080/api'; // Replace with actual API base
+// Business API endpoints (configurable via environment variable)
+const CWJ_API_BASE = process.env.CWJ_API_BASE || 'http://host.docker.internal:8080/api';
 
 // Helper: Get business context data
 async function getBusinessContext() {
