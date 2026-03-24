@@ -302,9 +302,19 @@ cp .env.docker .env
 vi .env
 # 至少需要设置：
 # DOUBAO_API_KEY=your_api_key_here
+# CWJ_API_BASE=http://host.docker.internal:8080/api
 ```
 
+如果外部业务接口不是运行在宿主机默认地址，请把 `CWJ_API_BASE` 改成实际可访问的地址。
+Windows 和 macOS 通常可以直接使用 `host.docker.internal`，Linux 下建议改成宿主机 IP，或者在 Compose 中显式配置可访问的网关地址。
+
 #### 2️⃣ 启动服务
+
+在启动容器前，请先确认前端静态资源已生成，避免 Nginx 挂载 `./dist` 时找不到文件：
+
+```bash
+npm run build
+```
 
 **Linux/macOS**:
 ```bash
@@ -347,6 +357,8 @@ curl http://localhost:3000/health
 # 后端 API: http://localhost:3000
 ```
 
+如果前端页面空白或静态资源 404，优先检查宿主机是否已生成 `dist/` 目录，以及 `docker-compose.yml` 中的 `./dist:/usr/share/nginx/html:ro` 挂载路径是否正确。
+
 ### 💡 Docker 部署优势
 
 ✅ **一致的环境** - 开发、测试、生产环境完全一致  
@@ -368,6 +380,12 @@ curl http://localhost:3000/health
 | `.env.docker` | Docker 环境变量范例 |
 | `docker-start.sh` | Linux/macOS 快速启动脚本 |
 | `docker-start.bat` | Windows 快速启动脚本 |
+
+当前 Docker 方案的关键前提：
+
+1. 后端容器通过 `CWJ_API_BASE` 访问外部业务接口，不再硬编码 `localhost`。
+2. `backend` 不再依赖 `nginx`，避免循环启动依赖。
+3. 启动前需要有可用的 `dist/`，否则 Nginx 只能启动但无法提供前端静态资源。
 
 ### 🛠️ 常用 Docker 命令
 

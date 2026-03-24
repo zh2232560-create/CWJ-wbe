@@ -59,9 +59,13 @@ echo.%BLUE%ℹ 检查配置文件...%NC%
 if not exist ".env" (
     echo %YELLOW%⚠ .env 文件不存在，从 .env.docker 复制%NC%
     copy .env.docker .env
-    echo %BLUE%ℹ 请编辑 .env 文件，设置 DOUBAO_API_KEY 等必要配置%NC%
+    echo %BLUE%ℹ 请编辑 .env 文件，设置 DOUBAO_API_KEY、CWJ_API_BASE 等必要配置%NC%
     echo %YELLOW%⚠ 按任意键继续...%NC%
     pause
+)
+
+if not exist "dist" (
+    echo %YELLOW%⚠ 未检测到 dist 目录，建议先执行 npm run build，否则 Nginx 可能无法提供前端静态文件%NC%
 )
 
 if not exist "docker-compose.yml" (

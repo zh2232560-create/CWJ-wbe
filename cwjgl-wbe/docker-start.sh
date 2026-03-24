@@ -64,9 +64,13 @@ log_info "检查配置文件..."
 if [ ! -f ".env" ]; then
     log_warning ".env 文件不存在，从 .env.docker 复制"
     cp .env.docker .env
-    log_info "请编辑 .env 文件，设置 DOUBAO_API_KEY 等必要配置"
+    log_info "请编辑 .env 文件，设置 DOUBAO_API_KEY、CWJ_API_BASE 等必要配置"
     log_warning "按 Enter 继续，或 Ctrl+C 退出编辑 .env 文件..."
     read -r
+fi
+
+if [ ! -d "dist" ]; then
+    log_warning "未检测到 dist 目录，建议先执行 npm run build，否则 Nginx 可能无法提供前端静态文件"
 fi
 
 if [ ! -f "docker-compose.yml" ]; then
