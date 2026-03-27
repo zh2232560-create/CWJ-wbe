@@ -1,28 +1,8 @@
 <template>
   <div class="chat-wrapper">
-    <!-- 左侧历史记录 -->
-    <aside class="chat-sidebar" :class="{ collapsed: isSidebarCollapsed }">
-      <div class="sidebar-header">
-        <button class="btn-new-chat" @click="createNewSession">+ 新建对话</button>
-      </div>
-      <div class="history-list">
-        <div 
-          v-for="session in historySessions" 
-          :key="session.id" 
-          class="history-item" 
-          :class="{ active: sessionId === session.id }"
-          @click="switchSession(session.id)"
-        >
-          <span class="icon">💬</span>
-          <span class="title">{{ session.title }}</span>
-        </div>
-      </div>
-    </aside>
-
     <!-- 主对话区 -->
     <main class="chat-main">
       <header class="chat-header">
-        <button class="toggle-sidebar" @click="isSidebarCollapsed = !isSidebarCollapsed">☰</button>
         <h2>蔡文姬 AI 运营助手</h2>
         <button class="btn-close" @click="$router.back()">退出</button>
       </header>
@@ -104,26 +84,22 @@ export default {
   name: 'AIChat',
   data() {
     return {
-      isSidebarCollapsed: false,
       sessionId: null,
       userInput: '',
       messages: [],
       loading: false,
-      historySessions: [],
       suggestions: [
         '💡 大悦城的运营情况？',
         '📈 目前哪个门店使用量最多？',
         '📍 南部大区有多少家门店？',
-        '🔥 睡眠调理项目的平均温度？'
+        '🔥 艾灸机器人的操作步骤？'
       ],
       charts: {}
     };
   },
 
   async mounted() {
-    // 创建新会话或读取历史会话
     await this.initSession();
-    this.loadHistorySessions();
   },
 
   beforeUnmount() {
@@ -147,47 +123,6 @@ export default {
         console.error('Failed to create session:', err);
         // 降级处理：生成本地 sessionId
         this.sessionId = 'session_' + Date.now();
-      }
-    },
-
-    async createNewSession() {
-      await this.initSession();
-      this.messages = [];
-      this.userInput = '';
-      this.loadHistorySessions();
-    },
-
-    async switchSession(sessionId) {
-      this.sessionId = sessionId;
-      await this.loadSessionMessages(sessionId);
-    },
-
-    async loadHistorySessions() {
-      try {
-        const response = await fetch('/api/chat/sessions', {
-          headers: { 'Content-Type': 'application/json' }
-        });
-        const data = await response.json();
-        if (data.code === 0) {
-          this.historySessions = data.data.sessions || [];
-        }
-      } catch (err) {
-        console.error('Failed to load sessions:', err);
-      }
-    },
-
-    async loadSessionMessages(sessionId) {
-      try {
-        const response = await fetch(`/api/chat/history?sessionId=${sessionId}`, {
-          headers: { 'Content-Type': 'application/json' }
-        });
-        const data = await response.json();
-        if (data.code === 0) {
-          this.messages = data.data.messages || [];
-          this.scrollToBottom();
-        }
-      } catch (err) {
-        console.error('Failed to load messages:', err);
       }
     },
 
@@ -263,8 +198,6 @@ export default {
             console.log(`✅ Tokens used: ${data.data.usage.total_tokens || '未知'}`);
           }
 
-          // 刷新会话历史列表
-          await this.loadHistorySessions();
           console.log('✅ Chat completed successfully');
         } else {
           // API返回错误
@@ -440,64 +373,6 @@ export default {
   color: #333;
 }
 
-.chat-sidebar {
-  width: 260px;
-  background: #151932;
-  color: #fff;
-  display: flex;
-  flex-direction: column;
-  transition: all 0.3s;
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.chat-sidebar.collapsed {
-  width: 0;
-  overflow: hidden;
-}
-
-.sidebar-header {
-  padding: 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.btn-new-chat {
-  width: 100%;
-  padding: 12px;
-  background: transparent;
-  border: 1px dashed rgba(255, 255, 255, 0.3);
-  color: #fff;
-  cursor: pointer;
-  border-radius: 6px;
-  transition: all 0.2s;
-}
-
-.btn-new-chat:hover {
-  border-color: #00ffff;
-  color: #00ffff;
-}
-
-.history-list {
-  flex: 1;
-  padding: 10px;
-  overflow-y: auto;
-}
-
-.history-item {
-  padding: 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  gap: 10px;
-  font-size: 13px;
-  margin-bottom: 5px;
-  transition: background 0.2s;
-}
-
-.history-item:hover,
-.history-item.active {
-  background: rgba(0, 255, 255, 0.2);
-}
-
 .chat-main {
   flex: 1;
   display: flex;
@@ -514,14 +389,6 @@ export default {
   padding: 0 20px;
   gap: 15px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.toggle-sidebar {
-  background: none;
-  border: none;
-  font-size: 20px;
-  cursor: pointer;
-  color: #333;
 }
 
 .chat-header h2 {
@@ -955,17 +822,6 @@ export default {
 }
 
 @media (max-width: 768px) {
-  .chat-sidebar {
-    position: absolute;
-    left: 0;
-    top: 0;
-    height: 100%;
-    z-index: 1000;
-    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
-  }
-  .chat-sidebar.collapsed {
-    transform: translateX(-100%);
-  }
   .content {
     max-width: 85%;
   }

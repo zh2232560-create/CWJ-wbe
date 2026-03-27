@@ -1,0 +1,292 @@
+# ============================================================================
+# 蔡文姬智能管理系统 - 包环境配置与依赖说明
+# ============================================================================
+
+## 📦 项目信息
+
+项目名: cwjgl-wbe (蔡文姬企业管理系统 - Web Backend & Frontend)
+版本: 1.0.0
+类型: ES Module (type: "module")
+私有项目: true
+
+## 🔧 系统环境要求
+
+最低版本要求:
+- Node.js >= 16.0
+- npm >= 7.0
+
+推荐版本:
+- Node.js 18.x (LTS)
+- npm 9.x 或 yarn 4.x
+- Git >= 2.30
+
+## 📋 npm 脚本命令
+
+### 开发命令
+npm run dev              # 启动前端开发服务器 (Vite) - 监听 localhost:5173
+npm run server          # 启动后端 Express 服务器 - 监听 localhost:3000
+npm run server:dev      # 开发模式启动后端 (同上)
+
+### 构建命令
+npm run build           # 生产环境构建 - 输出到 dist/ 目录
+npm run preview         # 预览生产构建结果
+
+### 数据库命令
+npm run db:init         # 初始化 SQLite 数据库 (运行 init-db.cjs 脚本)
+npm run db:reset        # 重置数据库 (删除 chat.db 后重新初始化)
+
+### 代码质量命令
+npm run lint            # ESLint 检查并自动修复代码
+npm run format          # Prettier 格式化 src/ 目录
+npm run test            # 测试模式 (vite --mode test)
+
+## 📦 生产依赖 (dependencies)
+
+### 前端框架和 UI
+- vue@^3.5.13
+  └─ 渐进式 JavaScript 框架，用于构建交互式用户界面
+  └─ 版本: ^3.5.13 (最新 3.x，允许小补丁更新)
+
+- vue-router@^4.5.0
+  └─ Vue 官方路由管理器，处理应用的页面导航
+  └─ 版本: ^4.5.0
+
+- element-plus@^2.9.7
+  └─ 企业级 UI 组件库（Vue 3），提供按钮、表单、对话框等组件
+  └─ 版本: ^2.9.7
+
+- @element-plus/icons-vue@^2.3.1
+  └─ Element Plus 官方图标库
+
+### 状态管理
+- pinia@^3.0.1
+  └─ Vue 3 的官方状态管理库，用于全局状态共享 (stores/)
+  └─ 替代了 Vuex，API 更简洁
+
+### HTTP 和网络
+- axios@^1.13.6
+  └─ Promise 基础的 HTTP 客户端库
+  └─ 用于前端请求 API 和客户端与后端通信
+  └─ 支持拦截器、超时、请求取消等功能
+
+- cors@^2.8.6
+  └─ Express 中间件，处理跨域资源共享 (CORS)
+  └─ 让后端可以接受来自不同域的请求
+
+### 后端框架
+- express@^5.2.1
+  └─ 轻量级 Web 框架 (Node.js 原生)
+  └─ 处理 HTTP 路由、中间件、请求响应等
+  └─ 本项目在 server.js 中使用
+
+### 数据库 (后端)
+- sqlite3@^6.0.1
+  └─ SQLite 数据库驱动 (Node.js binding)
+  └─ 轻量级关系数据库，用于存储聊天记录和会话数据
+  └─ 初始化脚本: scripts/init-db.cjs
+  └─ 数据库路径: db/chat.db (生产环境默认)
+  └─ 注: 需要 Python 3 和编译工具才能从源码安装
+
+### 中间件和工具
+- body-parser@^2.2.2
+  └─ Express 中间件，解析 HTTP 请求体 (JSON/URL-encoded)
+  └─ server.js 中用于解析 POST 请求的 JSON 数据
+
+### 数据可视化
+- echarts@^6.0.0
+  └─ 开源可视化库，用于绘制图表和实时数据展示
+  └─ 组件位置: src/components/common/js/echart.js
+
+- chart.js@^4.5.1
+  └─ 轻量级图表库，用于简单的数据可视化
+
+### 其他前端库
+- vuedraggable@^4.1.0
+  └─ Vue 3 拖拽排序组件 (Sortable.js 的 Vue 包装)
+
+### 样式和预处理
+- sass@^1.86.3
+  └─ SCSS 预处理器 (重写为 Dart Sass)
+  └─ 用于编译 .scss 样式文件到 CSS
+  └─ 样式目录: src/assets/styles/
+
+## 🛠️ 开发依赖 (devDependencies)
+
+### 构建工具
+- vite@^6.2.4
+  └─ 下一代前端构建工具 (替代 Webpack)
+  └─ 提供快速的开发服务和优化的生产构建
+  └─ 配置文件: vite.config.js
+
+- @vitejs/plugin-vue@^5.2.3
+  └─ Vite 的 Vue 3 支持插件
+
+### 代码质量工具
+- eslint@^9.22.0
+  └─ JavaScript 代码检查工具
+  └─ 配置: eslint.config.js
+
+- @eslint/js@^9.22.0
+  └─ ESLint 的推荐 JavaScript 配置
+
+- eslint-plugin-vue@~10.0.0
+  └─ Vue 模板的 ESLint 插件
+
+- @vue/eslint-config-prettier@^10.2.0
+  └─ ESLint 与 Prettier 集成配置
+
+- prettier@3.5.3
+  └─ 代码格式化工具，统一代码风格
+  └─ 使用 npm run format 调用
+
+- globals@^16.0.0
+  └─ ESLint 全局变量配置
+
+### 自动导入
+- unplugin-auto-import@^19.1.2
+  └─ 自动导入 Vue API (ref, computed 等)
+  └─ 无需手动 import
+
+- unplugin-vue-components@^28.4.1
+  └─ 自动导入 Vue 组件
+  └─ 自动注册 Element Plus 组件
+
+### 开发工具
+- vite-plugin-vue-devtools@^7.7.2
+  └─ Vue DevTools 集成 (浏览器调试工具)
+
+## 📂 项目结构中与包相关的目录
+
+node_modules/           # npm install 后生成的依赖包目录
+                        # 大小约 ~800MB, Git 需要在 .gitignore 中排除
+
+package.json            # 项目配置文件，声明所有依赖
+package-lock.json       # npm 自动生成，锁定依赖版本 (确保一致性)
+yarn.lock              # (如果用 yarn) yarn 自动生成的锁定文件
+
+src/                    # 源代码目录
+├── main.js            # 应用入口 (Vue + Pinia + Router 初始化)
+├── App.vue            # 根组件
+├── api/               # HTTP API 模块
+│   ├── cwj.js         # 蔡文姬业务 API 封装
+│   └── common.js      # 通用 API 方法
+├── components/        # Vue 组件库
+├── stores/            # Pinia 状态管理
+├── router/            # Vue Router 路由配置
+├── views/             # 页面组件
+├── utils/             # 工具函数
+│   ├── request.js     # Axios 请求封装 (拦截器、重试等)
+│   ├── auth.js        # 认证工具 (token 管理)
+│   ├── cache.js       # 本地缓存工具
+│   └── ... 
+└── assets/            # 静态资源
+    └── styles/        # 全局样式 (使用 SCSS)
+
+dist/                   # npm run build 后生成的生产版本
+                        # 包含压缩的 JS、CSS、HTML
+
+scripts/                # 工具脚本
+├── init-db.cjs        # SQLite 数据库初始化脚本 (CommonJS 格式)
+└── ... 
+
+server.js              # Express 后端服务 (Node.js 入口)
+                       # API: /api/chat, /api/health, 等
+
+db/                    # 数据库目录
+├── chat.db           # SQLite 数据库文件 (运行时生成)
+└── ...
+
+## 🔄 版本和更新策略
+
+### 版本号含义
+- ^x.y.z = 允许小版本和补丁版本更新 (>= x.y.z, < (x+1).0.0)
+- ~x.y.z = 仅允许补丁版本更新 (>= x.y.z, < x.(y+1).0)
+- 无前缀 = 精确版本 (如 prettier@3.5.3)
+
+### 更新依赖
+npm update              # 更新所有依赖到最新次版本
+npm update package-name # 更新特定包
+npm outdated           # 查看哪些包有新版本可用
+npm audit              # 检查安全漏洞
+
+### 安装特定版本
+npm install package-name@1.2.3   # 安装精确版本
+npm install package-name@latest  # 安装最新版本
+
+## 🚀 安装和初始化流程
+
+### 1. 首次安装
+npm install             # 根据 package.json 安装所有依赖
+                        # 生成 node_modules 和 package-lock.json
+                        # 可用 yarn install (如果系统装了 yarn)
+
+### 2. 初始化数据库 (只需一次)
+npm run db:init         # 创建 SQLite 数据库和表结构
+
+### 3. 启动开发环境 (两个终端)
+终端 1 - 后端:
+npm run server          # 启动 Express 服务器 (localhost:3000)
+
+终端 2 - 前端:
+npm run dev             # 启动 Vite 开发服务器 (localhost:5173)
+
+### 4. 生产构建
+npm run build           # 编译 Vue 前端到 dist/ (压缩、优化)
+npm run preview         # 本地预览生产版本
+
+## 🐳 Docker 环境下的包管理
+
+Dockerfile 中的依赖安装:
+- 前端构建阶段: npm ci  (使用 package-lock.json 确保版本一致)
+- 最终运行阶段: npm ci --only=production (仅安装生产依赖)
+
+### Docker 中的常用命令
+docker-compose exec backend npm install   # 在容器中新增包
+docker-compose exec backend npm run db:init  # 在容器中初始化数据库
+
+## ⚠️ 常见包问题和解决
+
+问题 1: node_modules 损坏
+→ rm -rf node_modules package-lock.json
+→ npm install
+
+问题 2: sqlite3 安装失败
+→ 需要 C++ 编译工具和 Python 3
+→ Windows: Visual Studio Build Tools
+→ macOS: Command Line Tools for Xcode
+→ Linux: build-essential, python3-dev
+
+问题 3: 端口被占用 (3000 或 5173)
+→ npm run server -- --port 3001  (改不了)
+→ 找到占用进程: lsof -i :3000 (macOS/Linux) 或 netstat -ano (Windows)
+→ 关闭该进程
+
+问题 4: 依赖版本冲突
+→ npm ls package-name  (查看依赖树)
+→ 清除缓存: npm cache clean --force
+
+问题 5: npm 太慢
+→ 换源: npm config set registry https://registry.npmmirror.com
+→ 或用 yarn/pnpm
+
+## 📊 项目依赖统计
+
+总包数:
+- 生产依赖: 14 个
+- 开发依赖: 10 个
+- 总计: ~300+ 个子依赖 (递归计算)
+
+node_modules 大小: ~800MB - 1.2GB
+构建输出 (dist): ~500KB - 1MB (压缩后)
+
+## ✅ 验证环境就绪
+
+检查清单:
+□ Node.js 版本 >= 16 (node --version)
+□ npm 版本 >= 7 (npm --version)
+□ npm install 完成，无错误
+□ npm run db:init 成功
+□ npm run server 可以启动后端
+□ npm run dev 可以启动前端
+□ 浏览器可以访问 http://localhost:5173
+□ API 可以访问 http://localhost:3000/health
